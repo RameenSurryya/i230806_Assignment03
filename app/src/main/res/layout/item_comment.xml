@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One comment or reply on Comments (06). CommentsActivity makes it look like either:
+     - a comment: 33dp avatar at the screen margin, no thread line;
+     - a reply: 26dp avatar indented under the parent's bubble, with the curved thread line
+       (bg_thread_line) joining it to the parent's avatar.
+     Bubble with name + text, an optional photo, a like chip on the bubble's corner, and
+     "2h  Like  Reply" under it. Long-press your own comment to delete it. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingBottom="@dimen/comment_gap">
+
+    <!-- Curved line from the parent's avatar (replies only) -->
+    <View
+        android:id="@+id/v_thread_line"
+        style="@style/Kinnect.ThreadLine"
+        android:layout_marginTop="@dimen/thread_line_reply_top"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/ll_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/screen_margin">
+
+        <FrameLayout
+            android:id="@+id/fl_avatar"
+            android:layout_width="@dimen/avatar_33"
+            android:layout_height="@dimen/avatar_33">
+
+            <TextView
+                android:id="@+id/tv_avatar"
+                style="@style/Kinnect.Avatar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:textSize="@dimen/text_avatar_33" />
+
+            <ImageView
+                android:id="@+id/iv_avatar_photo"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_avatar_circle"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/comment_bubble_gap"
+            android:layout_marginEnd="@dimen/comment_column_end"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <!-- Bubble with the like chip on its bottom-right corner -->
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:id="@+id/ll_bubble"
+                    style="@style/Kinnect.CommentBubble.Thread"
+                    android:layout_marginEnd="@dimen/comment_bubble_end"
+                    android:layout_marginBottom="@dimen/comment_chip_space">
+
+                    <TextView
+                        android:id="@+id/tv_name"
+                        style="@style/Kinnect.Text.CommentName" />
+
+                    <TextView
+                        android:id="@+id/tv_text"
+                        style="@style/Kinnect.Text.CommentText" />
+                </LinearLayout>
+
+                <!-- Like chip: the like disc and how many liked the comment -->
+                <LinearLayout
+                    android:id="@+id/ll_chip"
+                    style="@style/Kinnect.ReactionChip">
+
+                    <ImageView
+                        style="@style/Kinnect.ReactionChip.Icon"
+                        android:src="@drawable/reaction_like" />
+
+                    <TextView
+                        android:id="@+id/tv_chip_count"
+                        style="@style/Kinnect.Text.ChipCount" />
+                </LinearLayout>
+            </FrameLayout>
+
+            <!-- Photo comment: 18dp corners (clipToOutline set in Kotlin) -->
+            <ImageView
+                android:id="@+id/iv_photo"
+                android:layout_width="@dimen/comment_photo_width"
+                android:layout_height="@dimen/comment_photo_height"
+                android:layout_marginTop="@dimen/comment_photo_top"
+                android:background="@drawable/bg_bubble_received"
+                android:contentDescription="@string/cd_comment_photo"
+                android:scaleType="centerCrop"
+                android:visibility="gone" />
+
+            <!-- "2h  Like  Reply": Like is teal when you liked the comment -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/comment_bubble_padding_h"
+                android:layout_marginTop="@dimen/comment_meta_top_chip"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_time"
+                    style="@style/Kinnect.Text.CommentMeta" />
+
+                <TextView
+                    android:id="@+id/tv_like"
+                    style="@style/Kinnect.Text.CommentMeta.Action"
+                    android:minHeight="@dimen/comment_action_touch"
+                    android:paddingTop="@dimen/comment_action_pad"
+                    android:paddingBottom="@dimen/comment_action_pad"
+                    android:text="@string/comment_like" />
+
+                <TextView
+                    android:id="@+id/tv_reply"
+                    style="@style/Kinnect.Text.CommentMeta.Action"
+                    android:minHeight="@dimen/comment_action_touch"
+                    android:paddingTop="@dimen/comment_action_pad"
+                    android:paddingBottom="@dimen/comment_action_pad"
+                    android:text="@string/comment_reply" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

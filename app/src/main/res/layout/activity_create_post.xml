@@ -32,7 +32,7 @@
             android:singleLine="true"
             android:text="@string/create_post_title" />
 
-        <!-- Teal pill (33dp, drawn inside a 48dp touch target); Post goes back to Home -->
+        <!-- Teal pill (33dp, drawn inside a 48dp touch target): saves the post, then back to Home -->
         <Button
             android:id="@+id/btn_post"
             style="@style/Kinnect.Button"
@@ -63,19 +63,32 @@
             android:paddingEnd="@dimen/screen_margin"
             android:paddingBottom="@dimen/screen_margin">
 
-            <!-- Author row: JW avatar, then the name with the two audience chips under it -->
+            <!-- Author row: your avatar, then your name with the two audience chips under it -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
-                <TextView
-                    style="@style/Kinnect.Avatar"
+                <FrameLayout
                     android:layout_width="@dimen/avatar_44"
-                    android:layout_height="@dimen/avatar_44"
-                    android:backgroundTint="@color/avatar_jw"
-                    android:text="@string/sample_initials_jacob"
-                    android:textSize="@dimen/text_avatar_44" />
+                    android:layout_height="@dimen/avatar_44">
+
+                    <TextView
+                        android:id="@+id/tv_author_avatar"
+                        style="@style/Kinnect.Avatar"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:textSize="@dimen/text_avatar_44" />
+
+                    <ImageView
+                        android:id="@+id/iv_author_photo"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_avatar_circle"
+                        android:importantForAccessibility="no"
+                        android:scaleType="centerCrop"
+                        android:visibility="gone" />
+                </FrameLayout>
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -86,12 +99,12 @@
                     android:orientation="vertical">
 
                     <TextView
+                        android:id="@+id/tv_author_name"
                         style="@style/Kinnect.Text"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/figtree_bold"
                         android:singleLine="true"
-                        android:text="@string/sample_name_jacob"
                         android:textSize="@dimen/text_name" />
 
                     <LinearLayout
@@ -136,19 +149,44 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- The post text in the large size used for short posts -->
-            <TextView
-                android:id="@+id/tv_post_text"
+            <!-- The post text, typed in the large size used for short posts -->
+            <EditText
+                android:id="@+id/et_post_text"
                 style="@style/Kinnect.Text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/create_text_top"
+                android:background="@null"
+                android:gravity="top|start"
+                android:hint="@string/create_text_hint"
+                android:importantForAutofill="no"
+                android:inputType="textMultiLine|textCapSentences"
                 android:lineSpacingExtra="@dimen/post_large_line_spacing"
-                android:text="@string/sample_create_post_text"
+                android:minHeight="@dimen/touch_target"
+                android:padding="0dp"
+                android:textColorHint="@color/text_hint"
                 android:textSize="@dimen/text_post_large" />
 
-            <!-- Background swatches: "Aa" (plain, selected) then seven colours. Visual only. -->
+            <!-- Chosen photos: one item_picked_photo.xml each (with an X), scrolls sideways -->
+            <HorizontalScrollView
+                android:id="@+id/hsv_picked"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_16"
+                android:scrollbars="none"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/ll_picked"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal" />
+            </HorizontalScrollView>
+
+            <!-- Background swatches: "Aa" (plain, selected) then seven colours. Visual only
+                 (hidden once photos are added, like on Facebook). -->
             <LinearLayout
+                android:id="@+id/ll_swatches"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/swatch_row_top"
@@ -223,7 +261,7 @@
             android:background="@drawable/bg_segment"
             android:backgroundTint="@color/track" />
 
-        <!-- Photo/video opens the Photo picker -->
+        <!-- Photo/video opens the Photo picker (several photos) -->
         <LinearLayout
             android:id="@+id/ll_photo_video"
             style="@style/Kinnect.SheetRow">
@@ -286,7 +324,7 @@
                 android:text="@string/create_live_video" />
         </LinearLayout>
 
-        <!-- Camera opens the Camera screen -->
+        <!-- Camera: take one photo and add it (CameraActivity returns it) -->
         <LinearLayout
             android:id="@+id/ll_camera"
             style="@style/Kinnect.SheetRow">

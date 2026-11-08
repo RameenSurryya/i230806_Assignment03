@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 5b: texts for Comments (06), Share to chat, and message previews used by ChatRepo. -->
+<resources>
+
+    <!-- Comments (06) -->
+    <string name="comments_newest">Newest</string>
+    <string name="comments_empty">No comments yet. Be the first to comment.</string>
+    <string name="comments_view_more_count">View %1$d more replies</string>
+    <string name="comments_hide_replies">Hide replies</string>
+    <string name="comments_like_count">%1$d</string>
+    <string name="comment_hint">Write a comment…</string>
+    <string name="comment_mention">"\@%1$s "</string>
+    <string name="comment_delete">Delete comment</string>
+    <string name="comment_deleted">Comment deleted</string>
+    <string name="comment_photo_added">Photo added. Write something or tap send.</string>
+    <string name="comment_uploading">Uploading photo…</string>
+    <string name="comment_error_empty">Write a comment or add a photo.</string>
+    <string name="comment_post_gone">This post was deleted.</string>
+    <string name="cd_remove_comment_photo">Remove the photo</string>
+
+    <!-- Share to chat -->
+    <string name="share_title">Send to</string>
+    <string name="share_message_hint">Say something about this post (optional)</string>
+    <string name="share_sent">Sent</string>
+    <string name="share_no_friends">Add friends to share posts with them.</string>
+    <string name="cd_send_to">Send to %1$s</string>
+
+    <!-- Last-message previews in Chats and in push notifications (ChatRepo) -->
+    <string name="preview_photo">📷 Photo</string>
+    <string name="preview_post">Shared a post</string>
+    <string name="preview_deleted">Message deleted</string>
+</resources>

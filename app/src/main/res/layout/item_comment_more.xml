@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "View 3 more replies" / "Hide replies" under a comment thread (06), at the end of the
+     thread line. Tapping it opens or closes the rest of the replies. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingBottom="@dimen/comment_gap">
+
+    <View
+        style="@style/Kinnect.ThreadLine"
+        android:layout_height="@dimen/view_more_line_height"
+        android:layout_marginTop="@dimen/view_more_line_top" />
+
+    <TextView
+        android:id="@+id/tv_more"
+        style="@style/Kinnect.Text"
+        android:layout_width="wrap_content"
+        android:layout_height="@dimen/comment_action_touch"
+        android:layout_marginStart="@dimen/reply_indent"
+        android:fontFamily="@font/figtree_bold"
+        android:gravity="center_vertical"
+        android:textColor="@color/text_grey"
+        android:textSize="@dimen/text_comment" />
+</FrameLayout>

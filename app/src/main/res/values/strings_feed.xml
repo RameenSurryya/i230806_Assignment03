@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 5: texts for Home (04), Reaction picker (05), Create post (07) and the post card. -->
+<resources>
+
+    <!-- Home (04) -->
+    <string name="home_composer_hint_name">What\'s on your mind, %1$s?</string>
+    <string name="home_your_story">Your story</string>
+    <string name="feed_empty">Your feed is empty. Add friends, or share your first post with the box above.</string>
+    <string name="cd_story_of">%1$s\'s story</string>
+
+    <!-- Post card (item_post.xml) -->
+    <string name="post_more_photos">+%1$d</string>
+    <string name="post_reactions_you">You</string>
+    <string name="post_reactions_you_and">You and %1$s others</string>
+    <string name="post_reactions_name_and">%1$s and %2$s others</string>
+    <string name="post_comments_count">%1$s comments</string>
+    <string name="post_shares_count">%1$s shares</string>
+    <string name="post_dot_joiner">" · "</string>
+    <string name="post_delete">Delete post</string>
+    <string name="post_deleted">Post deleted</string>
+    <string name="post_hide">Hide post</string>
+    <string name="post_hidden">Post hidden</string>
+    <string name="post_title_format">%1$s\'s post</string>
+    <string name="cd_post_photo_count">Photos from the post: %1$d</string>
+    <string name="cd_post_author">Open %1$s\'s profile</string>
+
+    <!-- Create post (07) -->
+    <string name="create_text_hint">What\'s on your mind?</string>
+    <string name="create_error_empty">Write something or add a photo first.</string>
+    <string name="create_posting">Posting…</string>
+    <string name="create_posted">Posted</string>
+    <string name="create_error">Couldn\'t post. Check your internet and try again.</string>
+    <string name="cd_remove_photo">Remove this photo</string>
+</resources>

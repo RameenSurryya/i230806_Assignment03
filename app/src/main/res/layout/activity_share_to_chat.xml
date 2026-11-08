@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Share to chat (opened by Share on a post): an optional message, then your friends, each
+     with a send button. Not one of the 23 designed screens, so it reuses their pieces: the
+     toolbar of 13 / 17, the grey pill field of 13, and the people rows of Search
+     (item_search_person.xml). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/surface"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
+
+    <!-- ===== Toolbar: back arrow, "Send to" ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/toolbar_height"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/iv_back"
+            style="@style/Kinnect.IconButton"
+            android:contentDescription="@string/cd_back"
+            android:src="@drawable/ic_back" />
+
+        <TextView
+            style="@style/Kinnect.Text.Title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:text="@string/share_title" />
+    </LinearLayout>
+
+    <View style="@style/Kinnect.Divider" />
+
+    <!-- Optional message sent with the post (grey pill, 48dp touch height) -->
+    <EditText
+        android:id="@+id/et_message"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/touch_target"
+        android:layout_marginStart="@dimen/screen_margin"
+        android:layout_marginTop="@dimen/space_8"
+        android:layout_marginEnd="@dimen/screen_margin"
+        android:background="@drawable/bg_touch_chip_37"
+        android:fontFamily="@font/figtree_regular"
+        android:hint="@string/share_message_hint"
+        android:importantForAutofill="no"
+        android:inputType="textCapSentences"
+        android:paddingStart="@dimen/composer_pill_padding"
+        android:paddingEnd="@dimen/composer_pill_padding"
+        android:singleLine="true"
+        android:textColor="@color/text_dark"
+        android:textColorHint="@color/text_hint"
+        android:textSize="@dimen/text_body" />
+
+    <TextView
+        android:id="@+id/tv_empty"
+        style="@style/Kinnect.Text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/space_32"
+        android:gravity="center_horizontal"
+        android:text="@string/share_no_friends"
+        android:textColor="@color/text_grey"
+        android:visibility="gone" />
+
+    <!-- Friends, A to Z -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_friends"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/space_8"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="@dimen/space_16" />
+</LinearLayout>

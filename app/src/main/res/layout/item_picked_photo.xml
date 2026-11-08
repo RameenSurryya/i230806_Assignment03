@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One chosen photo on Create post (07): a rounded square thumbnail with a dark X circle in
+     the top-right corner that removes it. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="@dimen/picked_photo_size"
+    android:layout_height="@dimen/picked_photo_size"
+    android:layout_marginEnd="@dimen/space_8">
+
+    <ImageView
+        android:id="@+id/iv_picked"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_gallery_thumb"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop" />
+
+    <!-- 28dp dark circle in a 40dp touch frame -->
+    <ImageView
+        android:id="@+id/iv_remove"
+        android:layout_width="@dimen/picked_remove_touch"
+        android:layout_height="@dimen/picked_remove_touch"
+        android:layout_gravity="top|end"
+        android:background="@drawable/bg_picked_remove"
+        android:contentDescription="@string/cd_remove_photo"
+        android:padding="@dimen/picked_remove_padding"
+        android:src="@drawable/ic_close"
+        app:tint="@color/white" />
+</FrameLayout>

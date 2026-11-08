@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 5b: sizes added for Comments (06). -->
+<resources>
+    <dimen name="thread_line_reply_top">-43.5dp</dimen> <!-- the line starts beside the "2h Like Reply" above (rows are 3dp further apart than in 06) -->
+    <dimen name="comment_action_touch">32dp</dimen>    <!-- "Like" / "Reply" tap height (larger than the text) -->
+    <dimen name="comment_action_pad">8dp</dimen>
+</resources>

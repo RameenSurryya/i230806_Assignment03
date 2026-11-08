@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The X on a chosen photo (07): a 28dp see-through dark circle centred in a 40dp touch frame. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:inset="6dp">
+    <shape android:shape="oval">
+        <solid android:color="@color/photo_button_dark" />
+    </shape>
+</inset>

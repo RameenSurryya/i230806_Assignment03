@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One post in the feed (04), also shown behind the Reaction picker (05).
+     PostViews.bind fills it in: author, time, text, photo collage, reaction summary and the
+     Like / Comment / Share row. A section band separates posts. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/surface"
+    android:orientation="vertical">
+
+    <!-- ===== Header: avatar, name, time · globe, "..." and X ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/screen_margin"
+        android:paddingTop="@dimen/post_header_top">
+
+        <!-- Avatar: initials, with the profile picture on top (tap: their profile) -->
+        <FrameLayout
+            android:id="@+id/fl_author_avatar"
+            android:layout_width="@dimen/avatar_36"
+            android:layout_height="@dimen/avatar_36">
+
+            <TextView
+                android:id="@+id/tv_author_avatar"
+                style="@style/Kinnect.Avatar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <ImageView
+                android:id="@+id/iv_author_photo"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_avatar_circle"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/post_name_gap"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_author"
+                style="@style/Kinnect.Text.Body.Bold"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/post_name_top"
+                android:ellipsize="end"
+                android:singleLine="true" />
+
+            <!-- "2h ·" and the small globe (posts are public) -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/post_meta_top"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_time"
+                    style="@style/Kinnect.Text.Caption"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+                <ImageView
+                    android:layout_width="@dimen/icon_size_tiny"
+                    android:layout_height="@dimen/icon_size_tiny"
+                    android:layout_marginStart="@dimen/space_4"
+                    android:contentDescription="@string/cd_public"
+                    android:src="@drawable/ic_globe"
+                    app:tint="@color/text_grey" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- "...": Delete (your post) or Hide (someone else's) -->
+        <ImageView
+            android:id="@+id/iv_post_more"
+            style="@style/Kinnect.IconButton"
+            android:layout_marginTop="@dimen/post_action_shift"
+            android:layout_marginEnd="@dimen/post_more_end"
+            android:layout_marginBottom="@dimen/post_action_shift"
+            android:contentDescription="@string/cd_more"
+            android:src="@drawable/ic_more" />
+
+        <!-- X: hides the post from the feed -->
+        <ImageView
+            android:id="@+id/iv_post_close"
+            style="@style/Kinnect.IconButton"
+            android:layout_marginTop="@dimen/post_action_shift"
+            android:layout_marginEnd="@dimen/post_close_end"
+            android:layout_marginBottom="@dimen/post_action_shift"
+            android:contentDescription="@string/cd_hide_post"
+            android:src="@drawable/ic_close" />
+    </LinearLayout>
+
+    <!-- Post text (hidden for a photo-only post) -->
+    <TextView
+        android:id="@+id/tv_post_text"
+        style="@style/Kinnect.Text.Body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/post_body_top"
+        android:paddingStart="@dimen/screen_margin"
+        android:paddingEnd="@dimen/post_body_end" />
+
+    <!-- ===== Photo collage. PostViews shows the parts the number of photos needs:
+         1 photo: the left one, full width. 2: left + top right. 3: all three.
+         4 or more: all three, with a dark layer and "+N" on the last. ===== -->
+    <LinearLayout
+        android:id="@+id/ll_photos"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/post_photos_height"
+        android:layout_marginTop="@dimen/post_photos_top"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/iv_photo_1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@color/chip_fill"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop" />
+
+        <LinearLayout
+            android:id="@+id/ll_photos_right"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="@dimen/photo_gap"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/iv_photo_2"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:background="@color/chip_fill"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop" />
+
+            <!-- Last tile: photo, 50% dark layer, "+4" on top (FrameLayout overlap) -->
+            <FrameLayout
+                android:id="@+id/fl_photo_3"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="@dimen/photo_gap"
+                android:layout_weight="1">
+
+                <ImageView
+                    android:id="@+id/iv_photo_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@color/chip_fill"
+                    android:importantForAccessibility="no"
+                    android:scaleType="centerCrop" />
+
+                <View
+                    android:id="@+id/v_photo_dim"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@color/photo_dim" />
+
+                <TextView
+                    android:id="@+id/tv_more_photos"
+                    style="@style/Kinnect.Text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:fontFamily="@font/figtree_bold"
+                    android:textColor="@color/white"
+                    android:textSize="@dimen/text_photo_more" />
+            </FrameLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ===== Reaction summary: up to three reaction kinds overlapping, names, counts ===== -->
+    <LinearLayout
+        android:id="@+id/ll_summary"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/reaction_row_height"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/reaction_row_start"
+        android:paddingEnd="@dimen/screen_margin">
+
+        <!-- Each icon sits on a white disc (padding = ring width); the negative margin
+             makes the next one overlap it, and later views draw on top. -->
+        <ImageView
+            android:id="@+id/iv_reaction_1"
+            android:layout_width="@dimen/reaction_size_small"
+            android:layout_height="@dimen/reaction_size_small"
+            android:background="@drawable/bg_avatar_circle"
+            android:importantForAccessibility="no"
+            android:padding="@dimen/reaction_ring" />
+
+        <ImageView
+            android:id="@+id/iv_reaction_2"
+            android:layout_width="@dimen/reaction_size_small"
+            android:layout_height="@dimen/reaction_size_small"
+            android:layout_marginStart="@dimen/reaction_overlap"
+            android:background="@drawable/bg_avatar_circle"
+            android:importantForAccessibility="no"
+            android:padding="@dimen/reaction_ring" />
+
+        <ImageView
+            android:id="@+id/iv_reaction_3"
+            android:layout_width="@dimen/reaction_size_small"
+            android:layout_height="@dimen/reaction_size_small"
+            android:layout_marginStart="@dimen/reaction_overlap"
+            android:background="@drawable/bg_avatar_circle"
+            android:importantForAccessibility="no"
+            android:padding="@dimen/reaction_ring" />
+
+        <!-- "Aisha and 12 others" / "You and 3 others" -->
+        <TextView
+            android:id="@+id/tv_reaction_names"
+            style="@style/Kinnect.Text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/reaction_text_gap"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:textColor="@color/text_grey"
+            android:textSize="@dimen/text_label" />
+
+        <!-- "86 comments · 12 shares" -->
+        <TextView
+            android:id="@+id/tv_comments_shares"
+            style="@style/Kinnect.Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:textColor="@color/text_grey"
+            android:textSize="@dimen/text_label" />
+    </LinearLayout>
+
+    <View
+        style="@style/Kinnect.Divider"
+        android:layout_marginStart="@dimen/post_divider_margin"
+        android:layout_marginEnd="@dimen/post_divider_margin" />
+
+    <!-- ===== Like / Comment / Share: three equal columns ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/touch_target"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/post_divider_margin"
+        android:paddingEnd="@dimen/post_divider_margin">
+
+        <!-- Like: tap = like / undo; long press = Reaction picker. Shows your reaction. -->
+        <LinearLayout
+            android:id="@+id/ll_like"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingBottom="@dimen/action_row_padding_bottom">
+
+            <ImageView
+                android:id="@+id/iv_like"
+                android:layout_width="@dimen/icon_size_action"
+                android:layout_height="@dimen/icon_size_action"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_like"
+                app:tint="@color/text_grey" />
+
+            <TextView
+                android:id="@+id/tv_like"
+                style="@style/Kinnect.Text.Body.Bold"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/action_icon_gap"
+                android:text="@string/action_like"
+                android:textColor="@color/text_grey" />
+        </LinearLayout>
+
+        <!-- Comment: opens Comments -->
+        <LinearLayout
+            android:id="@+id/ll_comment"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingBottom="@dimen/action_row_padding_bottom">
+
+            <ImageView
+                android:layout_width="@dimen/icon_size_action"
+                android:layout_height="@dimen/icon_size_action"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_comment"
+                app:tint="@color/text_grey" />
+
+            <TextView
+                style="@style/Kinnect.Text.Body.Bold"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/action_icon_gap"
+                android:text="@string/action_comment"
+                android:textColor="@color/text_grey" />
+        </LinearLayout>
+
+        <!-- Share: send the post to a friend in chat -->
+        <LinearLayout
+            android:id="@+id/ll_share"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingBottom="@dimen/action_row_padding_bottom">
+
+            <ImageView
+                android:layout_width="@dimen/icon_size_action"
+                android:layout_height="@dimen/icon_size_action"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_share"
+                app:tint="@color/text_grey" />
+
+            <TextView
+                style="@style/Kinnect.Text.Body.Bold"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/action_icon_gap"
+                android:text="@string/action_share"
+                android:textColor="@color/text_grey" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Thick gap before the next post -->
+    <View
+        android:id="@+id/v_band"
+        style="@style/Kinnect.SectionBand" />
+</LinearLayout>
