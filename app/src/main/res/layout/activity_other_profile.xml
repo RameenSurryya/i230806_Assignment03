@@ -22,15 +22,15 @@
             android:src="@drawable/ic_back" />
 
         <TextView
+            android:id="@+id/tv_title"
             style="@style/Kinnect.Text.Title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:ellipsize="end"
-            android:singleLine="true"
-            android:text="@string/sample_name_omar" />
+            android:singleLine="true" />
 
-        <!-- Search: visual only on this screen -->
+        <!-- Search: opens Search -->
         <ImageView
             android:id="@+id/iv_search"
             style="@style/Kinnect.IconButton"
@@ -59,15 +59,18 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <!-- Cover: full width, fixed height; centerCrop shows the wide 2:1 crop -->
+                <!-- Cover: full width, fixed height; centerCrop shows the wide 2:1 crop.
+                     The night placeholder when the person has no cover photo. -->
                 <ImageView
+                    android:id="@+id/iv_cover"
                     android:layout_width="match_parent"
                     android:layout_height="@dimen/profile_cover_height"
                     android:importantForAccessibility="no"
                     android:scaleType="centerCrop"
                     android:src="@drawable/ph_night" />
 
-                <!-- Avatar: teal + white ring with the OF disc inside, centred -->
+                <!-- Avatar: teal + white ring with the initials disc inside, centred; the profile
+                     picture is drawn over the disc when there is one -->
                 <FrameLayout
                     android:layout_width="@dimen/avatar_144"
                     android:layout_height="@dimen/avatar_144"
@@ -76,19 +79,30 @@
                     android:background="@drawable/bg_profile_ring">
 
                     <TextView
+                        android:id="@+id/tv_avatar"
                         style="@style/Kinnect.Avatar"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:layout_margin="@dimen/other_ring_total"
                         android:backgroundTint="@color/avatar_of"
                         android:paddingBottom="@dimen/other_initials_lift"
-                        android:text="@string/sample_initials_omar"
                         android:textSize="@dimen/text_avatar_131" />
+
+                    <ImageView
+                        android:id="@+id/iv_avatar_photo"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_margin="@dimen/other_ring_total"
+                        android:background="@drawable/bg_avatar_circle"
+                        android:importantForAccessibility="no"
+                        android:scaleType="centerCrop"
+                        android:visibility="gone" />
                 </FrameLayout>
             </FrameLayout>
 
             <!-- ===== Name, counts, bio (all centred) ===== -->
             <TextView
+                android:id="@+id/tv_name"
                 style="@style/Kinnect.Text.ProfileName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -98,11 +112,11 @@
                 android:ellipsize="end"
                 android:gravity="center_horizontal"
                 android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text="@string/sample_name_omar" />
+                android:singleLine="true" />
 
-            <!-- "1,204 friends · 38 mutual": numbers bold, words grey (<b> / <font> in strings.xml) -->
+            <!-- "1,204 friends · 38 mutual": numbers bold, words grey (OtherProfileActivity) -->
             <TextView
+                android:id="@+id/tv_counts"
                 style="@style/Kinnect.Text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -111,10 +125,11 @@
                 android:layout_marginEnd="@dimen/screen_margin"
                 android:fontFamily="@font/figtree"
                 android:gravity="center_horizontal"
-                android:includeFontPadding="false"
-                android:text="@string/other_counts" />
+                android:includeFontPadding="false" />
 
+            <!-- Bio: hidden when empty -->
             <TextView
+                android:id="@+id/tv_bio"
                 style="@style/Kinnect.Text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -122,8 +137,7 @@
                 android:layout_marginTop="@dimen/other_bio_top"
                 android:layout_marginEnd="@dimen/screen_margin"
                 android:gravity="center_horizontal"
-                android:includeFontPadding="false"
-                android:text="@string/other_bio" />
+                android:includeFontPadding="false" />
 
             <!-- ===== Buttons: Add friend | Message | ... =====
                  Add friend is a little wider than Message (143 : 131dp), so the weights follow
@@ -136,7 +150,8 @@
                 android:layout_marginEnd="@dimen/screen_margin"
                 android:orientation="horizontal">
 
-                <!-- Add friend: visual only -->
+                <!-- Friend button, one look per state (OtherProfileActivity.showFriendButton):
+                     Add friend (teal) / Requested (grey) / Confirm (teal) / Friends or Close friend (grey) -->
                 <LinearLayout
                     android:id="@+id/ll_add_friend"
                     android:layout_width="0dp"
@@ -147,6 +162,7 @@
                     android:orientation="horizontal">
 
                     <ImageView
+                        android:id="@+id/iv_friend_icon"
                         android:layout_width="@dimen/icon_size_small"
                         android:layout_height="@dimen/icon_size_small"
                         android:importantForAccessibility="no"
@@ -154,6 +170,7 @@
                         app:tint="@color/white" />
 
                     <TextView
+                        android:id="@+id/tv_friend_label"
                         style="@style/Kinnect.Text"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -192,7 +209,7 @@
                         android:text="@string/other_message" />
                 </LinearLayout>
 
-                <!-- More: visual only -->
+                <!-- More: close friends, unfriend, delete or cancel a request (a PopupMenu) -->
                 <ImageView
                     android:id="@+id/iv_more"
                     android:layout_width="@dimen/profile_more_width"
@@ -205,8 +222,9 @@
                     app:tint="@color/text_dark" />
             </LinearLayout>
 
-            <!-- ===== Mutual friends: overlapping AK / LM / ZR avatars + text ===== -->
+            <!-- ===== Mutual friends: up to three overlapping avatars + text (hidden when none) ===== -->
             <LinearLayout
+                android:id="@+id/ll_mutual"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="@dimen/screen_margin"
@@ -217,21 +235,22 @@
 
                 <!-- Each avatar: white 24dp disc (the ring) with the 22dp initials disc inside -->
                 <FrameLayout
+                    android:id="@+id/fl_mutual_1"
                     android:layout_width="@dimen/mutual_avatar_size"
                     android:layout_height="@dimen/mutual_avatar_size"
                     android:background="@drawable/bg_avatar_circle"
                     android:padding="@dimen/mutual_avatar_ring">
 
                     <TextView
+                        android:id="@+id/tv_mutual_1"
                         style="@style/Kinnect.Avatar"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:backgroundTint="@color/avatar_ak"
-                        android:text="@string/sample_initials_aisha"
                         android:textSize="@dimen/text_avatar_22" />
                 </FrameLayout>
 
                 <FrameLayout
+                    android:id="@+id/fl_mutual_2"
                     android:layout_width="@dimen/mutual_avatar_size"
                     android:layout_height="@dimen/mutual_avatar_size"
                     android:layout_marginStart="@dimen/mutual_avatar_overlap"
@@ -239,15 +258,15 @@
                     android:padding="@dimen/mutual_avatar_ring">
 
                     <TextView
+                        android:id="@+id/tv_mutual_2"
                         style="@style/Kinnect.Avatar"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:backgroundTint="@color/avatar_lm"
-                        android:text="@string/sample_initials_lina"
                         android:textSize="@dimen/text_avatar_22" />
                 </FrameLayout>
 
                 <FrameLayout
+                    android:id="@+id/fl_mutual_3"
                     android:layout_width="@dimen/mutual_avatar_size"
                     android:layout_height="@dimen/mutual_avatar_size"
                     android:layout_marginStart="@dimen/mutual_avatar_overlap"
@@ -255,16 +274,16 @@
                     android:padding="@dimen/mutual_avatar_ring">
 
                     <TextView
+                        android:id="@+id/tv_mutual_3"
                         style="@style/Kinnect.Avatar"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:backgroundTint="@color/avatar_zr"
-                        android:text="@string/sample_initials_zain"
                         android:textSize="@dimen/text_avatar_22" />
                 </FrameLayout>
 
-                <!-- Names in bold through <b> in strings.xml -->
+                <!-- "Friends with Aisha Khan, Lina Marsh and 36 others", names in bold -->
                 <TextView
+                    android:id="@+id/tv_mutual"
                     style="@style/Kinnect.Text"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -272,7 +291,6 @@
                     android:layout_weight="1"
                     android:fontFamily="@font/figtree"
                     android:includeFontPadding="false"
-                    android:text="@string/other_mutual"
                     android:textSize="@dimen/text_mutual" />
             </LinearLayout>
 
@@ -282,8 +300,10 @@
                 android:layout_marginTop="@dimen/other_divider_top"
                 android:layout_marginEnd="@dimen/screen_margin" />
 
-            <!-- ===== Intro details: icon + text rows, the value part in bold ===== -->
+            <!-- ===== Intro details: icon + text rows, the value part in bold.
+                 Each row is hidden when the person left that field empty. ===== -->
             <LinearLayout
+                android:id="@+id/ll_work"
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/profile_detail_row"
                 android:layout_marginTop="@dimen/other_rows_top"
@@ -305,19 +325,57 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/profile_detail_text_start"
                     android:includeFontPadding="false"
-                    android:text="@string/other_work_prefix" />
+                    android:text="@string/details_work_prefix" />
 
                 <TextView
+                    android:id="@+id/tv_work"
                     style="@style/Kinnect.Text.Body.Bold"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:ellipsize="end"
                     android:includeFontPadding="false"
-                    android:singleLine="true"
-                    android:text="@string/other_work" />
+                    android:singleLine="true" />
+            </LinearLayout>
+
+            <!-- Assignment 2: "Studied at" (the design shows it on your own profile only) -->
+            <LinearLayout
+                android:id="@+id/ll_study"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/profile_detail_row"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="@dimen/screen_margin"
+                android:paddingEnd="@dimen/screen_margin">
+
+                <ImageView
+                    android:layout_width="@dimen/icon_size_clock"
+                    android:layout_height="@dimen/icon_size_clock"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_graduation"
+                    app:tint="@color/text_dark" />
+
+                <TextView
+                    style="@style/Kinnect.Text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/profile_detail_text_start"
+                    android:includeFontPadding="false"
+                    android:text="@string/details_study_prefix" />
+
+                <TextView
+                    android:id="@+id/tv_study"
+                    style="@style/Kinnect.Text.Body.Bold"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:includeFontPadding="false"
+                    android:singleLine="true" />
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/ll_city"
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/profile_detail_row"
                 android:gravity="center_vertical"
@@ -338,16 +396,17 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/profile_detail_text_start"
                     android:includeFontPadding="false"
-                    android:text="@string/profile_lives_prefix" />
+                    android:text="@string/details_city_prefix" />
 
                 <TextView
+                    android:id="@+id/tv_city"
                     style="@style/Kinnect.Text.Body.Bold"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:ellipsize="end"
                     android:includeFontPadding="false"
-                    android:singleLine="true"
-                    android:text="@string/profile_lives" />
+                    android:singleLine="true" />
             </LinearLayout>
 
             <LinearLayout
@@ -366,16 +425,18 @@
                     app:tint="@color/text_dark" />
 
                 <TextView
+                    android:id="@+id/tv_joined"
                     style="@style/Kinnect.Text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/profile_detail_text_start"
-                    android:includeFontPadding="false"
-                    android:text="@string/other_joined" />
+                    android:includeFontPadding="false" />
             </LinearLayout>
 
-            <!-- ===== Photos: title + "See all" link, three photo tiles ===== -->
+            <!-- ===== Photos: title + "See all" link, the three newest photos from their posts.
+                 Both parts are hidden when they have not posted any photos. ===== -->
             <LinearLayout
+                android:id="@+id/ll_photos_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="@dimen/screen_margin"
@@ -406,6 +467,7 @@
                  corners come from bg_gallery_thumb; the activity turns on clipToOutline so the
                  picture is cut to them. centerCrop shows the whole square picture. -->
             <LinearLayout
+                android:id="@+id/ll_photos"
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/other_tile_height"
                 android:layout_marginStart="@dimen/screen_margin"
@@ -420,8 +482,7 @@
                     android:layout_weight="1"
                     android:background="@drawable/bg_gallery_thumb"
                     android:contentDescription="@string/cd_photo"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/ph_night" />
+                    android:scaleType="centerCrop" />
 
                 <ImageView
                     android:id="@+id/iv_photo_2"
@@ -431,8 +492,7 @@
                     android:layout_weight="1"
                     android:background="@drawable/bg_gallery_thumb"
                     android:contentDescription="@string/cd_photo"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/ph_lilac" />
+                    android:scaleType="centerCrop" />
 
                 <ImageView
                     android:id="@+id/iv_photo_3"
@@ -442,8 +502,7 @@
                     android:layout_weight="1"
                     android:background="@drawable/bg_gallery_thumb"
                     android:contentDescription="@string/cd_photo"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/ph_sky" />
+                    android:scaleType="centerCrop" />
             </LinearLayout>
         </LinearLayout>
     </ScrollView>

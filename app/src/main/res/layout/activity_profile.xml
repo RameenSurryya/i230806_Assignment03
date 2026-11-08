@@ -22,15 +22,15 @@
             android:src="@drawable/ic_back" />
 
         <TextView
+            android:id="@+id/tv_title"
             style="@style/Kinnect.Text.Title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:ellipsize="end"
-            android:singleLine="true"
-            android:text="@string/sample_name_jacob" />
+            android:singleLine="true" />
 
-        <!-- Search: visual only on this screen -->
+        <!-- Search: opens Search -->
         <ImageView
             android:id="@+id/iv_search"
             style="@style/Kinnect.IconButton"
@@ -64,15 +64,18 @@
                     android:layout_width="match_parent"
                     android:layout_height="@dimen/profile_cover_height">
 
+                    <!-- The cover photo; the teal placeholder when there is none -->
                     <ImageView
+                        android:id="@+id/iv_cover"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:importantForAccessibility="no"
                         android:scaleType="centerCrop"
                         android:src="@drawable/ph_teal" />
 
-                    <!-- Camera badge on the cover (visual only) -->
+                    <!-- Camera badge on the cover: opens Edit profile -->
                     <ImageView
+                        android:id="@+id/iv_cover_camera"
                         android:layout_width="@dimen/profile_cover_badge"
                         android:layout_height="@dimen/profile_cover_badge"
                         android:layout_gravity="bottom|end"
@@ -85,7 +88,8 @@
                         app:tint="@color/text_dark" />
                 </FrameLayout>
 
-                <!-- Avatar: white circle (the ring) with the JW disc inside and the badge on top -->
+                <!-- Avatar: white circle (the ring) with the initials disc inside, the profile
+                     picture over it (when there is one) and the camera badge on top -->
                 <FrameLayout
                     android:layout_width="@dimen/profile_avatar_frame"
                     android:layout_height="@dimen/profile_avatar_frame"
@@ -94,17 +98,28 @@
                     android:background="@drawable/bg_avatar_circle">
 
                     <TextView
+                        android:id="@+id/tv_avatar"
                         style="@style/Kinnect.Avatar"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:layout_margin="@dimen/profile_avatar_ring"
                         android:backgroundTint="@color/avatar_jw"
                         android:paddingBottom="@dimen/profile_initials_lift"
-                        android:text="@string/sample_initials_jacob"
                         android:textSize="@dimen/text_avatar_130" />
 
-                    <!-- Camera badge on the avatar (visual only) -->
                     <ImageView
+                        android:id="@+id/iv_avatar_photo"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_margin="@dimen/profile_avatar_ring"
+                        android:background="@drawable/bg_avatar_circle"
+                        android:importantForAccessibility="no"
+                        android:scaleType="centerCrop"
+                        android:visibility="gone" />
+
+                    <!-- Camera badge on the avatar: opens Edit profile -->
+                    <ImageView
+                        android:id="@+id/iv_avatar_camera"
                         android:layout_width="@dimen/profile_avatar_badge"
                         android:layout_height="@dimen/profile_avatar_badge"
                         android:layout_gravity="bottom|end"
@@ -120,6 +135,7 @@
 
             <!-- ===== Name, friend count, bio ===== -->
             <TextView
+                android:id="@+id/tv_name"
                 style="@style/Kinnect.Text.ProfileName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -128,10 +144,9 @@
                 android:layout_marginEnd="@dimen/screen_margin"
                 android:ellipsize="end"
                 android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text="@string/sample_name_jacob" />
+                android:singleLine="true" />
 
-            <!-- "834" bold + " friends" grey: two TextViews side by side -->
+            <!-- "834" bold + " friends" grey: two TextViews side by side (the number is live) -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -140,11 +155,12 @@
                 android:orientation="horizontal">
 
                 <TextView
+                    android:id="@+id/tv_friend_count"
                     style="@style/Kinnect.Text.Body.Bold"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:includeFontPadding="false"
-                    android:text="@string/profile_friend_count" />
+                    android:text="@string/zero" />
 
                 <TextView
                     style="@style/Kinnect.Text"
@@ -155,15 +171,16 @@
                     android:textColor="@color/text_grey" />
             </LinearLayout>
 
+            <!-- Bio: hidden when empty -->
             <TextView
+                android:id="@+id/tv_bio"
                 style="@style/Kinnect.Text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="@dimen/screen_margin"
                 android:layout_marginTop="@dimen/profile_bio_top"
                 android:layout_marginEnd="@dimen/screen_margin"
-                android:includeFontPadding="false"
-                android:text="@string/profile_bio" />
+                android:includeFontPadding="false" />
 
             <!-- ===== Buttons: Add to story | Edit profile | ... =====
                  48dp touch targets with 37dp shapes (bg_touch_*_37). The two labelled buttons share the width equally (layout_weight 1). -->
@@ -175,7 +192,7 @@
                 android:layout_marginEnd="@dimen/screen_margin"
                 android:orientation="horizontal">
 
-                <!-- Add to story: visual only -->
+                <!-- Add to story: opens the camera -->
                 <LinearLayout
                     android:id="@+id/ll_add_to_story"
                     android:layout_width="0dp"
@@ -231,7 +248,7 @@
                         android:text="@string/profile_edit_profile" />
                 </LinearLayout>
 
-                <!-- More: visual only -->
+                <!-- More: visual only (nothing to show for your own profile) -->
                 <ImageView
                     android:id="@+id/iv_more"
                     android:layout_width="@dimen/profile_more_width"
@@ -297,7 +314,8 @@
                 android:layout_marginTop="@dimen/profile_divider_top"
                 android:layout_marginEnd="@dimen/screen_margin" />
 
-            <!-- ===== Details: icon + text rows, the value part in bold ===== -->
+            <!-- ===== Details: icon + text rows, the value part in bold.
+                 Each row is hidden when that field is empty in Edit profile. ===== -->
             <TextView
                 style="@style/Kinnect.Text.SectionTitle"
                 android:layout_width="wrap_content"
@@ -308,6 +326,7 @@
                 android:text="@string/profile_details" />
 
             <LinearLayout
+                android:id="@+id/ll_work"
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/profile_detail_row"
                 android:layout_marginTop="@dimen/profile_rows_top"
@@ -329,19 +348,21 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/profile_detail_text_start"
                     android:includeFontPadding="false"
-                    android:text="@string/profile_work_prefix" />
+                    android:text="@string/details_work_prefix" />
 
                 <TextView
+                    android:id="@+id/tv_work"
                     style="@style/Kinnect.Text.Body.Bold"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:ellipsize="end"
                     android:includeFontPadding="false"
-                    android:singleLine="true"
-                    android:text="@string/profile_work" />
+                    android:singleLine="true" />
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/ll_study"
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/profile_detail_row"
                 android:gravity="center_vertical"
@@ -362,19 +383,21 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/profile_detail_text_start"
                     android:includeFontPadding="false"
-                    android:text="@string/profile_study_prefix" />
+                    android:text="@string/details_study_prefix" />
 
                 <TextView
+                    android:id="@+id/tv_study"
                     style="@style/Kinnect.Text.Body.Bold"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:ellipsize="end"
                     android:includeFontPadding="false"
-                    android:singleLine="true"
-                    android:text="@string/profile_study" />
+                    android:singleLine="true" />
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/ll_city"
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/profile_detail_row"
                 android:gravity="center_vertical"
@@ -395,16 +418,17 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/profile_detail_text_start"
                     android:includeFontPadding="false"
-                    android:text="@string/profile_lives_prefix" />
+                    android:text="@string/details_city_prefix" />
 
                 <TextView
+                    android:id="@+id/tv_city"
                     style="@style/Kinnect.Text.Body.Bold"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:ellipsize="end"
                     android:includeFontPadding="false"
-                    android:singleLine="true"
-                    android:text="@string/profile_lives" />
+                    android:singleLine="true" />
             </LinearLayout>
 
             <LinearLayout
@@ -423,12 +447,12 @@
                     app:tint="@color/text_dark" />
 
                 <TextView
+                    android:id="@+id/tv_joined"
                     style="@style/Kinnect.Text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/profile_detail_text_start"
-                    android:includeFontPadding="false"
-                    android:text="@string/profile_joined" />
+                    android:includeFontPadding="false" />
             </LinearLayout>
 
             <!-- ===== Friends: title + "Find friends" link, count, three tiles ===== -->
@@ -449,8 +473,9 @@
                     android:includeFontPadding="false"
                     android:text="@string/profile_friends" />
 
-                <!-- Find friends: visual only -->
+                <!-- Find friends: opens Search -->
                 <TextView
+                    android:id="@+id/tv_find_friends"
                     style="@style/Kinnect.Text.Link"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -459,18 +484,22 @@
                     android:text="@string/profile_find_friends" />
             </LinearLayout>
 
+            <!-- "834 friends", or "No friends yet" -->
             <TextView
+                android:id="@+id/tv_friends_total"
                 style="@style/Kinnect.Text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="@dimen/screen_margin"
                 android:layout_marginTop="@dimen/profile_friends_count_top"
                 android:includeFontPadding="false"
-                android:text="@string/profile_friends_total"
                 android:textColor="@color/text_grey" />
 
-            <!-- Three square-ish friend tiles sharing the width (layout_weight 1 each) -->
+            <!-- The first three friends as square tiles sharing the width (layout_weight 1 each):
+                 initials, with the profile picture on top when there is one. Tap: their profile.
+                 Unused tiles are INVISIBLE so the others keep their size. -->
             <LinearLayout
+                android:id="@+id/ll_friend_tiles"
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/profile_tile_height"
                 android:layout_marginStart="@dimen/screen_margin"
@@ -478,37 +507,85 @@
                 android:layout_marginEnd="@dimen/profile_tiles_end"
                 android:orientation="horizontal">
 
-                <TextView
-                    style="@style/Kinnect.Avatar"
+                <FrameLayout
+                    android:id="@+id/fl_friend_1"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_avatar_square"
-                    android:backgroundTint="@color/avatar_lm"
-                    android:text="@string/sample_initials_lina"
-                    android:textSize="@dimen/text_avatar_tile" />
+                    android:foreground="?attr/selectableItemBackground"
+                    android:visibility="invisible">
 
-                <TextView
-                    style="@style/Kinnect.Avatar"
+                    <TextView
+                        android:id="@+id/tv_friend_1"
+                        style="@style/Kinnect.Avatar"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_avatar_square"
+                        android:textSize="@dimen/text_avatar_tile" />
+
+                    <ImageView
+                        android:id="@+id/iv_friend_1"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_avatar_square"
+                        android:importantForAccessibility="no"
+                        android:scaleType="centerCrop"
+                        android:visibility="gone" />
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/fl_friend_2"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_marginStart="@dimen/profile_tile_gap"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_avatar_square"
-                    android:backgroundTint="@color/avatar_ak"
-                    android:text="@string/sample_initials_aisha"
-                    android:textSize="@dimen/text_avatar_tile" />
+                    android:foreground="?attr/selectableItemBackground"
+                    android:visibility="invisible">
 
-                <TextView
-                    style="@style/Kinnect.Avatar"
+                    <TextView
+                        android:id="@+id/tv_friend_2"
+                        style="@style/Kinnect.Avatar"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_avatar_square"
+                        android:textSize="@dimen/text_avatar_tile" />
+
+                    <ImageView
+                        android:id="@+id/iv_friend_2"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_avatar_square"
+                        android:importantForAccessibility="no"
+                        android:scaleType="centerCrop"
+                        android:visibility="gone" />
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/fl_friend_3"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_marginStart="@dimen/profile_tile_gap"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_avatar_square"
-                    android:backgroundTint="@color/avatar_of"
-                    android:text="@string/sample_initials_omar"
-                    android:textSize="@dimen/text_avatar_tile" />
+                    android:foreground="?attr/selectableItemBackground"
+                    android:visibility="invisible">
+
+                    <TextView
+                        android:id="@+id/tv_friend_3"
+                        style="@style/Kinnect.Avatar"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_avatar_square"
+                        android:textSize="@dimen/text_avatar_tile" />
+
+                    <ImageView
+                        android:id="@+id/iv_friend_3"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_avatar_square"
+                        android:importantForAccessibility="no"
+                        android:scaleType="centerCrop"
+                        android:visibility="gone" />
+                </FrameLayout>
             </LinearLayout>
         </LinearLayout>
     </ScrollView>

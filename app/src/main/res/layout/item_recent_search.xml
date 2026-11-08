@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One recent search (13): clock circle, the search text, X to remove it.
+     Tapping the row searches for that text again. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/search_recent_row"
+    android:background="?attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="@dimen/screen_margin"
+    android:paddingEnd="@dimen/search_recent_end">
+
+    <ImageView
+        android:layout_width="@dimen/circle_button"
+        android:layout_height="@dimen/circle_button"
+        android:background="@drawable/bg_circle_grey"
+        android:importantForAccessibility="no"
+        android:padding="@dimen/space_8"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_clock"
+        app:tint="@color/text_grey" />
+
+    <TextView
+        android:id="@+id/tv_recent_text"
+        style="@style/Kinnect.Text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/search_row_gap"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:singleLine="true"
+        android:textSize="@dimen/text_search_recent" />
+
+    <ImageView
+        android:id="@+id/iv_remove"
+        android:layout_width="@dimen/search_recent_row"
+        android:layout_height="@dimen/search_recent_row"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/cd_remove_recent"
+        android:padding="@dimen/space_16"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_close"
+        app:tint="@color/text_dark" />
+</LinearLayout>

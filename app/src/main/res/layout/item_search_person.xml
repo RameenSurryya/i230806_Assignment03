@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One person in Search results (13): avatar, name, subtitle and the add-friend circle.
+     Same sizes as the rows in the design. Tapping the row opens their profile. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/search_person_row"
+    android:background="?attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="@dimen/screen_margin"
+    android:paddingEnd="@dimen/screen_margin">
+
+    <!-- Initials disc, with the profile picture on top when there is one -->
+    <FrameLayout
+        android:layout_width="@dimen/avatar_48"
+        android:layout_height="@dimen/avatar_48">
+
+        <TextView
+            android:id="@+id/tv_avatar"
+            style="@style/Kinnect.Avatar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:textSize="@dimen/text_avatar_48" />
+
+        <ImageView
+            android:id="@+id/iv_avatar_photo"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_avatar_circle"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/search_row_gap"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_name"
+            style="@style/Kinnect.Text.Name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:singleLine="true" />
+
+        <!-- "Friend · Lives in Karachi", "@sara.iqbal · Lives in Lahore" ... -->
+        <TextView
+            android:id="@+id/tv_subtitle"
+            style="@style/Kinnect.Text.Caption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/search_subtitle_top"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:singleLine="true" />
+    </LinearLayout>
+
+    <!-- Light teal circle with a teal person-plus icon: sends a friend request.
+         Hidden for friends and people who already have a request. -->
+    <ImageView
+        android:id="@+id/iv_add"
+        android:layout_width="@dimen/circle_button"
+        android:layout_height="@dimen/circle_button"
+        android:background="@drawable/bg_circle_grey"
+        android:backgroundTint="@color/teal_tint"
+        android:padding="@dimen/space_10"
+        android:src="@drawable/ic_add_person"
+        app:tint="@color/teal" />
+</LinearLayout>

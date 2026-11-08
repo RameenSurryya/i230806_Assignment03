@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 3: texts for Profile (15), Other profile (17) and Search (13). -->
+<resources>
+
+    <!-- Profile details: "Works at Daraz", "Studied at FAST", "Lives in Karachi" -->
+    <string name="details_work_prefix">"Works at "</string>
+    <string name="details_study_prefix">"Studied at "</string>
+    <string name="details_city_prefix">"Lives in "</string>
+    <string name="zero" translatable="false">0</string>
+    <string name="friends_count_format">%1$d friends</string>
+    <string name="profile_no_friends">No friends yet. Find people with Search.</string>
+    <string name="cd_open_friend_profile">Open %1$s\'s profile</string>
+
+    <!-- Other profile (17): numbers bold, words grey -->
+    <string name="other_counts_format">&lt;b&gt;%1$d&lt;/b&gt;&lt;font color=\"#5B5954\"&gt; friends · &lt;/font&gt;&lt;b&gt;%2$d&lt;/b&gt;&lt;font color=\"#5B5954\"&gt; mutual&lt;/font&gt;</string>
+    <string name="mutual_one">Friends with &lt;b&gt;%1$s&lt;/b&gt;</string>
+    <string name="mutual_two">Friends with &lt;b&gt;%1$s&lt;/b&gt; and &lt;b&gt;%2$s&lt;/b&gt;</string>
+    <string name="mutual_many">Friends with &lt;b&gt;%1$s&lt;/b&gt;, &lt;b&gt;%2$s&lt;/b&gt; and &lt;b&gt;%3$d others&lt;/b&gt;</string>
+
+    <!-- The friend button on Other profile, one label per state -->
+    <string name="friend_add">Add friend</string>
+    <string name="friend_requested">Requested</string>
+    <string name="friend_confirm">Confirm</string>
+    <string name="friend_friends">Friends</string>
+    <string name="friend_close">Close friend</string>
+    <string name="friend_request_sent">Friend request sent</string>
+    <string name="friend_request_cancelled">Request cancelled</string>
+    <string name="friend_now_friends">You are now friends</string>
+
+    <!-- The "..." menu on Other profile -->
+    <string name="menu_add_close_friend">Add to close friends</string>
+    <string name="menu_remove_close_friend">Remove from close friends</string>
+    <string name="menu_unfriend">Unfriend</string>
+    <string name="menu_delete_request">Delete request</string>
+    <string name="menu_cancel_request">Cancel request</string>
+    <string name="close_friend_added">Added to close friends. They will see your close friends stories.</string>
+    <string name="close_friend_removed">Removed from close friends</string>
+    <string name="unfriended">Removed from friends</string>
+    <string name="request_deleted">Request deleted</string>
+
+    <!-- Search (13) -->
+    <string name="search_no_results">No people found for \"%1$s\"</string>
+    <string name="search_friend">Friend</string>
+    <string name="search_sent_you_request">Sent you a friend request</string>
+    <string name="search_requested">Request sent</string>
+    <string name="search_username">\@%1$s</string>
+    <string name="search_joiner">" · "</string>
+    <string name="search_no_recent">Your recent searches will show here.</string>
+    <string name="cd_add_friend_name">Add %1$s as a friend</string>
+</resources>
