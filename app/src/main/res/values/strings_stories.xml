@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 6: texts for Camera (09), Story editor (10), Story viewer (11) and Your story (12). -->
+<resources>
+
+    <!-- Camera (09) -->
+    <string name="camera_hint_story">Tap for a photo · hold for a video (15 s)</string>
+    <string name="camera_hint_photo">Tap to take a photo</string>
+    <string name="camera_permission_needed">Kinnect needs the camera to take photos. Tap to allow.</string>
+    <string name="camera_permission_settings">Camera access is off. Tap to open Settings and allow it.</string>
+    <string name="camera_error">Couldn\'t use the camera. Try again.</string>
+    <string name="cd_record_video">Hold to record a video</string>
+
+    <!-- Story editor (10) -->
+    <string name="editor_text_title">Text on your story</string>
+    <string name="editor_text_hint">Type something</string>
+    <string name="editor_text_done">Done</string>
+    <string name="editor_text_remove">Remove</string>
+    <string name="editor_sharing">Sharing your story…</string>
+    <string name="editor_shared">Shared to your story</string>
+    <string name="editor_shared_close">Shared with your close friends</string>
+    <string name="editor_error">Couldn\'t share the story. Check your internet and try again.</string>
+    <string name="cd_share_close_friends">Share with close friends only</string>
+
+    <!-- Story viewer (11) and Your story (12) -->
+    <string name="story_time_audience">%1$s · %2$s</string>
+    <string name="story_audience_public">Public</string>
+    <string name="story_audience_close">Close friends</string>
+    <string name="story_reacted">Reaction sent</string>
+    <string name="story_reply_sent">Reply sent</string>
+    <string name="story_reply_prefix">Replied to your story: %1$s</string>
+    <string name="story_none">There are no stories to show.</string>
+    <string name="story_seen_by">Seen by %1$d</string>
+    <string name="story_viewers_title">Seen by</string>
+    <string name="story_viewers_none">Nobody has seen this story yet.</string>
+    <string name="story_viewer_reacted">%1$s · reacted %2$s</string>
+    <string name="story_delete">Delete story</string>
+    <string name="story_deleted">Story deleted</string>
+    <string name="story_close">Close</string>
+    <string name="cd_close_friends_story">Close friends story</string>
+</resources>

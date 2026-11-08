@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 5: sizes added for Create post (07). -->
+<resources>
+    <dimen name="picked_photo_size">96dp</dimen>       <!-- chosen photo thumbnail -->
+    <dimen name="picked_remove_touch">40dp</dimen>     <!-- X touch frame (28dp circle + 6dp inset) -->
+    <dimen name="picked_remove_padding">13dp</dimen>   <!-- (40 - 14) / 2: a 14dp X -->
+</resources>

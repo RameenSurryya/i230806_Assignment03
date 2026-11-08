@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 6: sizes added for Camera (09) and the stories screens. -->
+<resources>
+    <dimen name="camera_hint_bottom">108dp</dimen>   <!-- hint pill just above the 78dp shutter row -->
+</resources>

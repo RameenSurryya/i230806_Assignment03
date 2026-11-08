@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One segment of the story progress bar (11, 12): a see-through white track with a white
+     fill on top. StoryPlayer adds one per story and grows the fill with scaleX (0 to 1). -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/Kinnect.StorySegment"
+    android:backgroundTint="@color/story_track">
+
+    <View
+        android:id="@+id/v_fill"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_segment"
+        android:scaleX="0" />
+</FrameLayout>

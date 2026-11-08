@@ -19,13 +19,26 @@
         android:layout_weight="1"
         android:background="@drawable/bg_camera_frame">
 
-        <!-- Camera picture: the tall story crop of the square placeholder (ICONS.md) -->
-        <ImageView
+        <!-- Live camera picture (CameraX PreviewView). FILL_CENTER fills the rounded frame
+             like centerCrop. -->
+        <androidx.camera.view.PreviewView
+            android:id="@+id/pv_camera"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:contentDescription="@string/cd_camera_preview"
-            android:scaleType="centerCrop"
-            android:src="@drawable/ph_sage" />
+            app:scaleType="fillCenter" />
+
+        <!-- Shown instead of the picture when the camera permission is missing -->
+        <TextView
+            android:id="@+id/tv_camera_message"
+            style="@style/Kinnect.Text"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:padding="@dimen/space_32"
+            android:textColor="@color/white"
+            android:visibility="gone" />
 
         <!-- Brightness (visual only) -->
         <ImageView
@@ -47,6 +60,23 @@
             android:contentDescription="@string/cd_close"
             android:src="@drawable/ic_close" />
 
+        <!-- "Tap for a photo · hold for a video": just above the bottom row -->
+        <TextView
+            android:id="@+id/tv_camera_hint"
+            style="@style/Kinnect.Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center_horizontal"
+            android:layout_marginBottom="@dimen/camera_hint_bottom"
+            android:background="@drawable/bg_camera_button"
+            android:backgroundTint="@color/photo_button"
+            android:paddingStart="@dimen/space_12"
+            android:paddingTop="@dimen/space_4"
+            android:paddingEnd="@dimen/space_12"
+            android:paddingBottom="@dimen/space_4"
+            android:textColor="@color/white"
+            android:textSize="@dimen/text_label" />
+
         <!-- Bottom row over the photo -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -64,7 +94,8 @@
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
-                <!-- Gallery thumbnail: rounded photo (clipToOutline) with a white frame on top -->
+                <!-- Gallery thumbnail: opens the Photo picker for a photo or video from the phone.
+                     Rounded photo (clipToOutline) with a white frame on top. -->
                 <ImageView
                     android:id="@+id/iv_gallery"
                     android:layout_width="@dimen/gallery_thumb"
@@ -81,7 +112,7 @@
                     android:layout_height="0dp"
                     android:layout_weight="1" />
 
-                <!-- Flash (visual only); its glyph is drawn smaller in the design -->
+                <!-- Flash on / off (faded = off); its glyph is drawn smaller in the design -->
                 <ImageView
                     android:id="@+id/iv_flash"
                     style="@style/Kinnect.CameraButton"
@@ -91,7 +122,7 @@
                     android:src="@drawable/ic_flash" />
             </LinearLayout>
 
-            <!-- Shutter: opens the story editor -->
+            <!-- Shutter: tap = photo, hold = video (turns red while recording) -->
             <ImageView
                 android:id="@+id/iv_shutter"
                 android:layout_width="@dimen/camera_row_height"
@@ -108,7 +139,7 @@
                 android:orientation="horizontal"
                 android:paddingEnd="@dimen/camera_row_end">
 
-                <!-- Flip camera (visual only) -->
+                <!-- Flip between the back and the front camera -->
                 <ImageView
                     android:id="@+id/iv_flip"
                     style="@style/Kinnect.CameraButton"

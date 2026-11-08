@@ -19,13 +19,21 @@
         android:layout_weight="1"
         android:background="@drawable/bg_camera_frame">
 
-        <!-- The photo being edited: tall story crop of the square placeholder -->
+        <!-- The photo being shared (centre-cropped to the tall frame) ... -->
         <ImageView
+            android:id="@+id/iv_photo"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:contentDescription="@string/cd_preview"
-            android:scaleType="centerCrop"
-            android:src="@drawable/ph_sage" />
+            android:scaleType="centerCrop" />
+
+        <!-- ... or the video, playing on a loop -->
+        <VideoView
+            android:id="@+id/vv_video"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:visibility="gone" />
 
         <!-- Close: back to the camera -->
         <ImageView
@@ -38,7 +46,8 @@
             android:contentDescription="@string/cd_close"
             android:src="@drawable/ic_close" />
 
-        <!-- Editing tools (visual only): tag people, text, stickers, music, effects -->
+        <!-- Editing tools: "Aa" adds / edits the text sticker; tag people, stickers, music and
+             effects are visual only -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -55,6 +64,7 @@
 
             <!-- "Aa" is bold text in the design, not an outline icon -->
             <TextView
+                android:id="@+id/tv_add_text"
                 android:layout_width="@dimen/camera_button"
                 android:layout_height="@dimen/camera_button"
                 android:layout_marginStart="@dimen/editor_button_overlap"
@@ -91,7 +101,7 @@
                 android:src="@drawable/ic_sparkle" />
         </LinearLayout>
 
-        <!-- Rotated text sticker -->
+        <!-- Rotated text sticker: the story's label. Hidden until text is added; tap to edit. -->
         <TextView
             android:id="@+id/tv_sticker"
             android:layout_width="wrap_content"
@@ -107,9 +117,9 @@
             android:paddingEnd="@dimen/sticker_padding"
             android:rotation="3"
             android:singleLine="true"
-            android:text="@string/editor_sticker"
             android:textColor="@color/white"
-            android:textSize="@dimen/text_sticker" />
+            android:textSize="@dimen/text_sticker"
+            android:visibility="gone" />
     </FrameLayout>
 
     <!-- ===== 2. Bottom bar: 48dp touch targets, the pills and the circle are drawn 44dp ===== -->
@@ -122,7 +132,7 @@
         android:layout_marginBottom="@dimen/editor_bar_vertical_touch"
         android:orientation="horizontal">
 
-        <!-- "Your story": opens the posted story -->
+        <!-- "Your story": share with everyone (friends), then open the posted story -->
         <LinearLayout
             android:id="@+id/ll_your_story"
             android:layout_width="0dp"
@@ -133,12 +143,11 @@
             android:orientation="horizontal">
 
             <TextView
+                android:id="@+id/tv_pill_avatar"
                 style="@style/Kinnect.Avatar"
                 android:layout_width="@dimen/avatar_24"
                 android:layout_height="@dimen/avatar_24"
-                android:backgroundTint="@color/avatar_jw"
                 android:importantForAccessibility="no"
-                android:text="@string/sample_initials_jacob"
                 android:textSize="@dimen/text_avatar_24" />
 
             <TextView
@@ -153,13 +162,15 @@
                 android:textSize="@dimen/text_label" />
         </LinearLayout>
 
-        <!-- "Close friends" (visual only) -->
+        <!-- "Close friends": share only with the people in your close friends list -->
         <LinearLayout
+            android:id="@+id/ll_close_friends"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_marginStart="@dimen/editor_bar_gap"
             android:layout_weight="1"
             android:background="@drawable/bg_touch_story_pill_44"
+            android:contentDescription="@string/cd_share_close_friends"
             android:gravity="center"
             android:orientation="horizontal">
 
@@ -185,7 +196,7 @@
                 android:textSize="@dimen/text_label" />
         </LinearLayout>
 
-        <!-- Next: share and open the posted story -->
+        <!-- Next: same as "Your story" (share with everyone) -->
         <ImageView
             android:id="@+id/iv_next"
             android:layout_width="@dimen/touch_target"
