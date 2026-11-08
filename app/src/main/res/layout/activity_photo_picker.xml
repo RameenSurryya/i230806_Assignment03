@@ -8,7 +8,7 @@
     android:fitsSystemWindows="true"
     android:orientation="vertical">
 
-    <!-- ===== Top bar: Cancel | Recents v | Next (2) ===== -->
+    <!-- ===== Top bar: Cancel | Recents v | Next (n) ===== -->
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="@dimen/toolbar_height">
@@ -26,7 +26,7 @@
             android:text="@string/picker_cancel"
             android:textSize="@dimen/text_name" />
 
-        <!-- Album chooser (visual only) -->
+        <!-- Album title: all recent photos, newest first (visual only) -->
         <LinearLayout
             android:id="@+id/ll_album"
             android:layout_width="wrap_content"
@@ -65,287 +65,139 @@
             android:gravity="center_vertical"
             android:paddingStart="@dimen/screen_margin"
             android:paddingEnd="@dimen/screen_margin"
-            android:text="@string/picker_next"
+            android:text="@string/picker_next_plain"
             android:textColor="@color/teal"
             android:textSize="@dimen/text_name" />
     </RelativeLayout>
 
-    <ScrollView
+    <!-- ===== Preview of the last tapped photo, with the two overlay buttons =====
+         Pinned above the grid (the grid scrolls on its own, as a RecyclerView). -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/post_photo_large_height">
+
+        <ImageView
+            android:id="@+id/iv_preview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/chip_fill"
+            android:contentDescription="@string/cd_preview"
+            android:scaleType="centerCrop" />
+
+        <!-- Dark see-through circle: switches the preview between filled and whole photo -->
+        <ImageView
+            android:id="@+id/iv_expand"
+            android:layout_width="@dimen/circle_button"
+            android:layout_height="@dimen/circle_button"
+            android:layout_gravity="bottom|start"
+            android:layout_marginStart="@dimen/picker_overlay_margin"
+            android:layout_marginBottom="@dimen/picker_overlay_bottom"
+            android:background="@drawable/bg_avatar_circle"
+            android:backgroundTint="@color/photo_button_dark"
+            android:contentDescription="@string/cd_expand"
+            android:padding="@dimen/picker_expand_padding"
+            android:src="@drawable/ic_expand"
+            app:tint="@color/white" />
+
+        <!-- Teal pill: copy icon + "SELECT MULTIPLE". Only shown when picking photos for a post.
+             Faded = one photo at a time; full colour = numbered multi-select. -->
+        <LinearLayout
+            android:id="@+id/ll_select_multiple"
+            android:layout_width="wrap_content"
+            android:layout_height="@dimen/button_height_medium"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="@dimen/picker_overlay_margin"
+            android:layout_marginBottom="@dimen/picker_overlay_bottom"
+            android:background="@drawable/bg_button_primary"
+            android:contentDescription="@string/cd_select_multiple"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="@dimen/select_multiple_padding"
+            android:paddingEnd="@dimen/select_multiple_padding">
+
+            <ImageView
+                android:layout_width="@dimen/icon_size_small"
+                android:layout_height="@dimen/icon_size_small"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_select_multiple"
+                app:tint="@color/white" />
+
+            <TextView
+                style="@style/Kinnect.Text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/select_multiple_text_gap"
+                android:fontFamily="@font/figtree_bold"
+                android:letterSpacing="0.06"
+                android:singleLine="true"
+                android:text="@string/picker_select_multiple"
+                android:textColor="@color/white"
+                android:textSize="@dimen/text_select_multiple" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ===== Photo grid: 4 columns, filled by PhotoPickerActivity (item_picker_tile.xml).
+         The -1dp side margins cancel the outer tile margins, so the first and last columns
+         touch the screen edges as in the design. The message on top is shown instead of the
+         grid when there are no photos or no permission. ===== -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:scrollbars="none">
+        android:layout_weight="1">
 
-        <LinearLayout
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_photos"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingBottom="@dimen/picker_grid_bottom">
+            android:layout_height="match_parent"
+            android:layout_marginStart="-1dp"
+            android:layout_marginTop="@dimen/tile_gap_half_v"
+            android:layout_marginEnd="-1dp"
+            android:clipToPadding="false"
+            android:paddingBottom="@dimen/picker_grid_bottom" />
 
-            <!-- ===== Preview with the two overlay buttons ===== -->
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/post_photo_large_height">
+        <TextView
+            android:id="@+id/tv_empty"
+            style="@style/Kinnect.Text"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:padding="@dimen/space_32"
+            android:textColor="@color/text_grey"
+            android:visibility="gone" />
+    </FrameLayout>
 
-                <ImageView
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:contentDescription="@string/cd_preview"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/ph_sand" />
-
-                <!-- Dark see-through circle with the expand icon (visual only) -->
-                <ImageView
-                    android:layout_width="@dimen/circle_button"
-                    android:layout_height="@dimen/circle_button"
-                    android:layout_gravity="bottom|start"
-                    android:layout_marginStart="@dimen/picker_overlay_margin"
-                    android:layout_marginBottom="@dimen/picker_overlay_bottom"
-                    android:background="@drawable/bg_avatar_circle"
-                    android:backgroundTint="@color/photo_button_dark"
-                    android:contentDescription="@string/cd_expand"
-                    android:padding="@dimen/picker_expand_padding"
-                    android:src="@drawable/ic_expand"
-                    app:tint="@color/white" />
-
-                <!-- Teal pill: copy icon + "SELECT MULTIPLE" (visual only) -->
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="@dimen/button_height_medium"
-                    android:layout_gravity="bottom|end"
-                    android:layout_marginEnd="@dimen/picker_overlay_margin"
-                    android:layout_marginBottom="@dimen/picker_overlay_bottom"
-                    android:background="@drawable/bg_button_primary"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="@dimen/select_multiple_padding"
-                    android:paddingEnd="@dimen/select_multiple_padding">
-
-                    <ImageView
-                        android:layout_width="@dimen/icon_size_small"
-                        android:layout_height="@dimen/icon_size_small"
-                        android:importantForAccessibility="no"
-                        android:src="@drawable/ic_select_multiple"
-                        app:tint="@color/white" />
-
-                    <TextView
-                        style="@style/Kinnect.Text"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="@dimen/select_multiple_text_gap"
-                        android:fontFamily="@font/figtree_bold"
-                        android:letterSpacing="0.06"
-                        android:singleLine="true"
-                        android:text="@string/picker_select_multiple"
-                        android:textColor="@color/white"
-                        android:textSize="@dimen/text_select_multiple" />
-                </LinearLayout>
-            </FrameLayout>
-
-            <!-- ===== 4 x 4 photo grid ===== -->
-            <GridLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="-1dp"
-                android:layout_marginTop="@dimen/tile_gap_half_v"
-                android:layout_marginEnd="-1dp"
-                android:columnCount="4">
-                <!-- The -1dp side margins cancel the outer tile margins, so the
-                     first and last columns touch the screen edges as in the design. -->
-
-                <!-- Row 1 -->
-                <FrameLayout style="@style/Kinnect.PickerTile">
-
-                    <ImageView
-                        style="@style/Kinnect.PickerTile.Photo"
-                        android:src="@drawable/ph_sand" />
-
-                    <!-- Chosen first: teal frame + "1" -->
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="@drawable/bg_tile_selected" />
-
-                    <TextView
-                        style="@style/Kinnect.PickerTile.Number"
-                        android:text="@string/sample_selected_1" />
-                </FrameLayout>
-
-                <FrameLayout style="@style/Kinnect.PickerTile">
-
-                    <ImageView
-                        style="@style/Kinnect.PickerTile.Photo"
-                        android:src="@drawable/ph_teal" />
-
-                    <View style="@style/Kinnect.PickerTile.Ring" />
-                </FrameLayout>
-
-                <FrameLayout style="@style/Kinnect.PickerTile">
-
-                    <ImageView
-                        style="@style/Kinnect.PickerTile.Photo"
-                        android:src="@drawable/ph_lilac" />
-
-                    <View style="@style/Kinnect.PickerTile.Ring" />
-                </FrameLayout>
-
-                <FrameLayout style="@style/Kinnect.PickerTile">
-
-                    <ImageView
-                        style="@style/Kinnect.PickerTile.Photo"
-                        android:src="@drawable/ph_sky" />
-
-                    <View style="@style/Kinnect.PickerTile.Ring" />
-                </FrameLayout>
-
-                <!-- Row 2 -->
-                <FrameLayout style="@style/Kinnect.PickerTile">
-
-                    <ImageView
-                        style="@style/Kinnect.PickerTile.Photo"
-                        android:src="@drawable/ph_sage" />
-
-                    <View style="@style/Kinnect.PickerTile.Ring" />
-                </FrameLayout>
-
-                <!-- Chosen second: "2" -->
-                <FrameLayout style="@style/Kinnect.PickerTile">
-
-                    <ImageView
-                        style="@style/Kinnect.PickerTile.Photo"
-                        android:src="@drawable/ph_rose" />
-
-                    <TextView
-                        style="@style/Kinnect.PickerTile.Number"
-                        android:text="@string/sample_selected_2" />
-                </FrameLayout>
-
-                <!-- Video: no circle in the design, "0:23" in the bottom-right corner -->
-                <FrameLayout style="@style/Kinnect.PickerTile">
-
-                    <ImageView
-                        style="@style/Kinnect.PickerTile.Photo"
-                        android:src="@drawable/ph_night" />
-
-                    <TextView
-                        style="@style/Kinnect.Text"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="bottom|end"
-                        android:layout_margin="@dimen/video_label_margin"
-                        android:fontFamily="@font/figtree_bold"
-                        android:text="@string/sample_video_length"
-                        android:textColor="@color/white"
-                        android:textSize="@dimen/text_caption" />
-                </FrameLayout>
-
-                <FrameLayout style="@style/Kinnect.PickerTile">
-
-                    <ImageView
-                        style="@style/Kinnect.PickerTile.Photo"
-                        android:src="@drawable/ph_teal" />
-
-                    <View style="@style/Kinnect.PickerTile.Ring" />
-                </FrameLayout>
-
-                <!-- Row 3 -->
-                <FrameLayout style="@style/Kinnect.PickerTile">
-
-                    <ImageView
-                        style="@style/Kinnect.PickerTile.Photo"
-                        android:src="@drawable/ph_lilac" />
-
-                    <View style="@style/Kinnect.PickerTile.Ring" />
-                </FrameLayout>
-
-                <FrameLayout style="@style/Kinnect.PickerTile">
-
-                    <ImageView
-                        style="@style/Kinnect.PickerTile.Photo"
-                        android:src="@drawable/ph_sand" />
-
-                    <View style="@style/Kinnect.PickerTile.Ring" />
-                </FrameLayout>
-
-                <FrameLayout style="@style/Kinnect.PickerTile">
-
-                    <ImageView
-                        style="@style/Kinnect.PickerTile.Photo"
-                        android:src="@drawable/ph_sage" />
-
-                    <View style="@style/Kinnect.PickerTile.Ring" />
-                </FrameLayout>
-
-                <FrameLayout style="@style/Kinnect.PickerTile">
-
-                    <ImageView
-                        style="@style/Kinnect.PickerTile.Photo"
-                        android:src="@drawable/ph_sky" />
-
-                    <View style="@style/Kinnect.PickerTile.Ring" />
-                </FrameLayout>
-
-                <!-- Row 4 -->
-                <FrameLayout style="@style/Kinnect.PickerTile">
-
-                    <ImageView
-                        style="@style/Kinnect.PickerTile.Photo"
-                        android:src="@drawable/ph_rose" />
-
-                    <View style="@style/Kinnect.PickerTile.Ring" />
-                </FrameLayout>
-
-                <FrameLayout style="@style/Kinnect.PickerTile">
-
-                    <ImageView
-                        style="@style/Kinnect.PickerTile.Photo"
-                        android:src="@drawable/ph_night" />
-
-                    <View style="@style/Kinnect.PickerTile.Ring" />
-                </FrameLayout>
-
-                <FrameLayout style="@style/Kinnect.PickerTile">
-
-                    <ImageView
-                        style="@style/Kinnect.PickerTile.Photo"
-                        android:src="@drawable/ph_sky" />
-
-                    <View style="@style/Kinnect.PickerTile.Ring" />
-                </FrameLayout>
-
-                <FrameLayout style="@style/Kinnect.PickerTile">
-
-                    <ImageView
-                        style="@style/Kinnect.PickerTile.Photo"
-                        android:src="@drawable/ph_sand" />
-
-                    <View style="@style/Kinnect.PickerTile.Ring" />
-                </FrameLayout>
-            </GridLayout>
-        </LinearLayout>
-    </ScrollView>
-
-    <!-- ===== Bottom strip: Gallery (active) | Photo | Video, visual only ===== -->
+    <!-- ===== Bottom strip: Gallery | Photo | Video filters ===== -->
     <View style="@style/Kinnect.Divider" />
 
-    <!-- Teal line over the first third (Gallery) -->
+    <!-- Teal line under the active filter (PhotoPickerActivity colours one of the three) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="@dimen/tab_indicator"
         android:orientation="horizontal">
 
         <View
+            android:id="@+id/v_tab_gallery"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:background="@color/teal" />
 
         <View
+            android:id="@+id/v_tab_photo"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="2" />
+            android:layout_weight="1" />
+
+        <View
+            android:id="@+id/v_tab_video"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
     </LinearLayout>
 
+    <!-- Filters: Gallery = everything allowed, Photo = pictures only, Video = videos only
+         (Video only appears when picking for a story) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="@dimen/picker_tabs_height"
@@ -353,16 +205,22 @@
         android:orientation="horizontal">
 
         <TextView
+            android:id="@+id/tv_tab_gallery"
             style="@style/Kinnect.Text.PickerTab"
+            android:background="?attr/selectableItemBackground"
             android:text="@string/picker_gallery"
             android:textColor="@color/teal" />
 
         <TextView
+            android:id="@+id/tv_tab_photo"
             style="@style/Kinnect.Text.PickerTab"
+            android:background="?attr/selectableItemBackground"
             android:text="@string/picker_photo" />
 
         <TextView
+            android:id="@+id/tv_tab_video"
             style="@style/Kinnect.Text.PickerTab"
+            android:background="?attr/selectableItemBackground"
             android:text="@string/picker_video" />
     </LinearLayout>
 </LinearLayout>

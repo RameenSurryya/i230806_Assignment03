@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 2.3 / 2.4: texts for Photo picker (08), Edit profile (16) and Menu (19). -->
+<resources>
+
+    <!-- Photo picker (08) -->
+    <string name="picker_next_plain">Next</string>
+    <string name="picker_next_count">Next (%1$d)</string>
+    <string name="picker_permission_needed">Kinnect needs access to your photos to show them here. Tap to allow.</string>
+    <string name="picker_permission_settings">Photo access is turned off. Tap to open Settings and allow it.</string>
+    <string name="picker_empty">No photos on this phone yet.</string>
+    <string name="picker_choose_first">Choose a photo first.</string>
+    <string name="picker_max">You can choose up to %1$d photos.</string>
+    <string name="picker_video_too_big">This video is too big. Choose one under 5 MB (about 15 seconds).</string>
+    <string name="cd_picker_tile">Photo %1$d</string>
+    <string name="cd_picker_video">Video %1$d</string>
+    <string name="cd_select_multiple">Select multiple photos</string>
+
+    <!-- Edit profile (16) -->
+    <string name="edit_title_first">Set up your profile</string>
+    <string name="edit_label_work">Work</string>
+    <string name="edit_label_study">Studied at</string>
+    <string name="edit_label_city">City</string>
+    <string name="edit_hint_username">your.username</string>
+    <string name="edit_hint_bio">Tell people about yourself</string>
+    <string name="edit_hint_work">Where do you work?</string>
+    <string name="edit_hint_study">School or university</string>
+    <string name="edit_hint_city">Where do you live?</string>
+    <string name="edit_hint_phone">Phone number</string>
+    <string name="edit_error_name">Enter your name.</string>
+    <string name="edit_error_username">Usernames are 3 to 20 characters: small letters, numbers, dots and underscores.</string>
+    <string name="edit_error_username_taken">That username is taken. Try another one.</string>
+    <string name="edit_error_upload">Couldn\'t upload the picture. Try again.</string>
+    <string name="edit_saved">Profile saved</string>
+
+    <!-- Menu (19) -->
+    <string name="cd_see_profile_of">See your profile, %1$s</string>
+</resources>

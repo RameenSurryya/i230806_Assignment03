@@ -28,7 +28,9 @@
             android:text="@string/edit_cancel"
             android:textSize="@dimen/text_name" />
 
+        <!-- "Edit profile", or "Set up your profile" right after sign up -->
         <TextView
+            android:id="@+id/tv_title"
             style="@style/Kinnect.Text.Title"
             android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -83,26 +85,47 @@
                     android:includeFontPadding="false"
                     android:text="@string/edit_profile_picture" />
 
-                <!-- Edit: visual only -->
+                <!-- Edit: opens the Photo picker for one picture -->
                 <TextView
+                    android:id="@+id/tv_edit_photo"
                     style="@style/Kinnect.Text.Link"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/edit_link_top"
+                    android:background="?attr/selectableItemBackground"
                     android:contentDescription="@string/cd_edit_profile_picture"
                     android:includeFontPadding="false"
                     android:text="@string/edit_link" />
             </LinearLayout>
 
-            <TextView
-                style="@style/Kinnect.Avatar"
+            <!-- Avatar: coloured initials, with the profile picture on top when there is one
+                 (Avatars.bind). Tapping it also opens the picker. -->
+            <FrameLayout
+                android:id="@+id/fl_avatar"
                 android:layout_width="@dimen/avatar_103"
                 android:layout_height="@dimen/avatar_103"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="@dimen/edit_avatar_top"
-                android:backgroundTint="@color/avatar_jw"
-                android:text="@string/sample_initials_jacob"
-                android:textSize="@dimen/text_avatar_103" />
+                android:contentDescription="@string/cd_edit_profile_picture"
+                android:foreground="?attr/selectableItemBackgroundBorderless">
+
+                <TextView
+                    android:id="@+id/tv_avatar"
+                    style="@style/Kinnect.Avatar"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:importantForAccessibility="no"
+                    android:textSize="@dimen/text_avatar_103" />
+
+                <ImageView
+                    android:id="@+id/iv_avatar_photo"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_avatar_circle"
+                    android:importantForAccessibility="no"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone" />
+            </FrameLayout>
 
             <!-- ===== Cover photo: title + Edit, rounded wide photo with the camera badge ===== -->
             <LinearLayout
@@ -122,12 +145,14 @@
                     android:includeFontPadding="false"
                     android:text="@string/edit_cover_photo" />
 
-                <!-- Edit: visual only -->
+                <!-- Edit: opens the Photo picker for the cover -->
                 <TextView
+                    android:id="@+id/tv_edit_cover"
                     style="@style/Kinnect.Text.Link"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/edit_link_top"
+                    android:background="?attr/selectableItemBackground"
                     android:contentDescription="@string/cd_edit_cover_photo"
                     android:includeFontPadding="false"
                     android:text="@string/edit_link" />
@@ -142,16 +167,18 @@
                 android:layout_marginEnd="@dimen/screen_margin"
                 android:background="@drawable/bg_photo_rounded">
 
-                <!-- centerCrop of the square picture in a 3:1 frame: only the sun's bottom shows -->
+                <!-- The cover photo (centre-cropped to 3:1); the teal placeholder until one is chosen -->
                 <ImageView
+                    android:id="@+id/iv_cover"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:importantForAccessibility="no"
                     android:scaleType="centerCrop"
                     android:src="@drawable/ph_teal" />
 
-                <!-- White camera circle (visual only) -->
+                <!-- White camera circle: also opens the picker for the cover -->
                 <ImageView
+                    android:id="@+id/iv_cover_camera"
                     android:layout_width="@dimen/profile_cover_badge"
                     android:layout_height="@dimen/profile_cover_badge"
                     android:layout_gravity="bottom|end"
@@ -184,8 +211,7 @@
                     android:id="@+id/et_name"
                     style="@style/Kinnect.EditRow.Value"
                     android:importantForAutofill="no"
-                    android:inputType="textPersonName"
-                    android:text="@string/sample_name_jacob" />
+                    android:inputType="textPersonName|textCapWords" />
             </LinearLayout>
 
             <View style="@style/Kinnect.EditRow.Line" />
@@ -198,11 +224,14 @@
                     android:labelFor="@id/et_username"
                     android:text="@string/edit_label_username" />
 
+                <!-- Small letters, numbers, dots and underscores; must be free (checked on Save) -->
                 <EditText
                     android:id="@+id/et_username"
                     style="@style/Kinnect.EditRow.Value"
+                    android:hint="@string/edit_hint_username"
                     android:importantForAutofill="no"
-                    android:text="@string/edit_username" />
+                    android:inputType="textNoSuggestions"
+                    android:maxLength="20" />
             </LinearLayout>
 
             <View style="@style/Kinnect.EditRow.Line" />
@@ -237,8 +266,65 @@
                 <EditText
                     android:id="@+id/et_bio"
                     style="@style/Kinnect.EditRow.Value"
+                    android:hint="@string/edit_hint_bio"
                     android:importantForAutofill="no"
-                    android:text="@string/edit_bio" />
+                    android:inputType="textCapSentences"
+                    android:maxLength="101" />
+            </LinearLayout>
+
+            <View style="@style/Kinnect.EditRow.Line" />
+
+            <!-- Assignment 2: the "Details" shown on Profile (15, 17) -->
+            <LinearLayout style="@style/Kinnect.EditRow">
+
+                <TextView
+                    style="@style/Kinnect.EditRow.Label"
+                    android:includeFontPadding="false"
+                    android:labelFor="@id/et_work"
+                    android:text="@string/edit_label_work" />
+
+                <EditText
+                    android:id="@+id/et_work"
+                    style="@style/Kinnect.EditRow.Value"
+                    android:hint="@string/edit_hint_work"
+                    android:importantForAutofill="no"
+                    android:inputType="textCapSentences" />
+            </LinearLayout>
+
+            <View style="@style/Kinnect.EditRow.Line" />
+
+            <LinearLayout style="@style/Kinnect.EditRow">
+
+                <TextView
+                    style="@style/Kinnect.EditRow.Label"
+                    android:includeFontPadding="false"
+                    android:labelFor="@id/et_study"
+                    android:text="@string/edit_label_study" />
+
+                <EditText
+                    android:id="@+id/et_study"
+                    style="@style/Kinnect.EditRow.Value"
+                    android:hint="@string/edit_hint_study"
+                    android:importantForAutofill="no"
+                    android:inputType="textCapWords" />
+            </LinearLayout>
+
+            <View style="@style/Kinnect.EditRow.Line" />
+
+            <LinearLayout style="@style/Kinnect.EditRow">
+
+                <TextView
+                    style="@style/Kinnect.EditRow.Label"
+                    android:includeFontPadding="false"
+                    android:labelFor="@id/et_city"
+                    android:text="@string/edit_label_city" />
+
+                <EditText
+                    android:id="@+id/et_city"
+                    style="@style/Kinnect.EditRow.Value"
+                    android:hint="@string/edit_hint_city"
+                    android:importantForAutofill="no"
+                    android:inputType="textCapWords" />
             </LinearLayout>
 
             <View style="@style/Kinnect.EditRow.Line" />
@@ -274,12 +360,14 @@
                     android:labelFor="@id/et_email"
                     android:text="@string/edit_label_email" />
 
+                <!-- The login email: shown, not editable (it belongs to Firebase Authentication) -->
                 <EditText
                     android:id="@+id/et_email"
                     style="@style/Kinnect.EditRow.Value"
+                    android:enabled="false"
                     android:importantForAutofill="no"
                     android:inputType="textEmailAddress"
-                    android:text="@string/edit_email" />
+                    android:textColor="@color/text_grey" />
             </LinearLayout>
 
             <View style="@style/Kinnect.EditRow.Line" />
@@ -296,8 +384,8 @@
                     android:id="@+id/et_phone"
                     style="@style/Kinnect.EditRow.Value"
                     android:importantForAutofill="no"
-                    android:inputType="phone"
-                    android:text="@string/edit_phone" />
+                    android:hint="@string/edit_hint_phone"
+                    android:inputType="phone" />
             </LinearLayout>
 
             <View style="@style/Kinnect.EditRow.Line" />
@@ -311,13 +399,13 @@
                     android:text="@string/edit_label_gender" />
 
                 <TextView
+                    android:id="@+id/tv_gender"
                     style="@style/Kinnect.Text"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:letterSpacing="-0.01"
                     android:singleLine="true"
-                    android:text="@string/edit_gender"
                     android:textSize="@dimen/text_name" />
             </LinearLayout>
 

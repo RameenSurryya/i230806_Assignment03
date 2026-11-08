@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One square tile of the Photo picker grid (08). PhotoPickerActivity sets its height to its
+     width, shows the thumbnail and switches between the empty ring and the teal number. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/tile_height"
+    android:layout_marginStart="@dimen/tile_gap_half_h"
+    android:layout_marginTop="@dimen/tile_gap_half_v"
+    android:layout_marginEnd="@dimen/tile_gap_half_h"
+    android:layout_marginBottom="@dimen/tile_gap_half_v"
+    android:background="@color/chip_fill"
+    android:foreground="?attr/selectableItemBackground">
+
+    <ImageView
+        android:id="@+id/iv_thumb"
+        style="@style/Kinnect.PickerTile.Photo" />
+
+    <!-- Teal frame on the photo shown in the preview -->
+    <View
+        android:id="@+id/v_selected"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_tile_selected"
+        android:visibility="gone" />
+
+    <!-- Empty white circle: not chosen (multi-select only) -->
+    <View
+        android:id="@+id/v_ring"
+        style="@style/Kinnect.PickerTile.Ring" />
+
+    <!-- Teal circle with the order it was chosen in: "1", "2" ... -->
+    <TextView
+        android:id="@+id/tv_number"
+        style="@style/Kinnect.PickerTile.Number"
+        android:visibility="gone" />
+
+    <!-- Video length, e.g. "0:23" -->
+    <TextView
+        android:id="@+id/tv_duration"
+        style="@style/Kinnect.Text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="@dimen/video_label_margin"
+        android:fontFamily="@font/figtree_bold"
+        android:shadowColor="@color/black"
+        android:shadowRadius="4"
+        android:textColor="@color/white"
+        android:textSize="@dimen/text_caption"
+        android:visibility="gone" />
+</FrameLayout>

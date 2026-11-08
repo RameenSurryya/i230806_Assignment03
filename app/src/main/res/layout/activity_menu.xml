@@ -49,13 +49,28 @@
                 android:paddingEnd="@dimen/menu_card_padding"
                 android:paddingBottom="@dimen/menu_card_padding_bottom">
 
-                <TextView
-                    style="@style/Kinnect.Avatar"
+                <!-- Avatar: initials disc, profile picture on top when there is one (MenuActivity) -->
+                <FrameLayout
                     android:layout_width="@dimen/avatar_40"
-                    android:layout_height="@dimen/avatar_40"
-                    android:backgroundTint="@color/avatar_jw"
-                    android:text="@string/sample_initials_jacob"
-                    android:textSize="@dimen/text_avatar_40" />
+                    android:layout_height="@dimen/avatar_40">
+
+                    <TextView
+                        android:id="@+id/tv_menu_avatar"
+                        style="@style/Kinnect.Avatar"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:backgroundTint="@color/avatar_jw"
+                        android:textSize="@dimen/text_avatar_40" />
+
+                    <ImageView
+                        android:id="@+id/iv_menu_avatar_photo"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_avatar_circle"
+                        android:importantForAccessibility="no"
+                        android:scaleType="centerCrop"
+                        android:visibility="gone" />
+                </FrameLayout>
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -65,12 +80,12 @@
                     android:orientation="vertical">
 
                     <TextView
+                        android:id="@+id/tv_menu_name"
                         style="@style/Kinnect.Text.Name.Bold"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:includeFontPadding="false"
                         android:singleLine="true"
-                        android:text="@string/sample_name_jacob"
                         android:textSize="@dimen/text_menu_name" />
 
                     <TextView
