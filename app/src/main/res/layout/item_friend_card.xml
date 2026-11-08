@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One card on Friends (14), used for a friend request (Confirm / Delete) and for a person
+     you may know (Add friend / Remove): big avatar, name + time, mutual friends, two buttons.
+     Tapping the card opens their profile. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/request_gap"
+    android:background="?attr/selectableItemBackground"
+    android:orientation="horizontal"
+    android:paddingStart="@dimen/screen_margin"
+    android:paddingEnd="@dimen/screen_margin">
+
+    <!-- Initials disc, with the profile picture on top when there is one -->
+    <FrameLayout
+        android:layout_width="@dimen/avatar_74"
+        android:layout_height="@dimen/avatar_74">
+
+        <TextView
+            android:id="@+id/tv_avatar"
+            style="@style/Kinnect.Avatar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:textSize="@dimen/text_avatar_74" />
+
+        <ImageView
+            android:id="@+id/iv_avatar_photo"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_avatar_circle"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/request_text_gap"
+        android:layout_marginTop="@dimen/request_name_top"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <!-- Name ........ time ("3d"; empty for suggestions) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tv_name"
+                style="@style/Kinnect.Text.Name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:includeFontPadding="false"
+                android:singleLine="true" />
+
+            <TextView
+                android:id="@+id/tv_time"
+                style="@style/Kinnect.Text.Caption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false" />
+        </LinearLayout>
+
+        <!-- Two small overlapping discs in the colours of the first mutual friends + "8 mutual friends" -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/request_mutual_top"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <View
+                android:id="@+id/v_mutual_1"
+                android:layout_width="@dimen/mutual_dot"
+                android:layout_height="@dimen/mutual_dot"
+                android:background="@drawable/bg_avatar_circle"
+                android:visibility="gone" />
+
+            <View
+                android:id="@+id/v_mutual_2"
+                android:layout_width="@dimen/mutual_dot"
+                android:layout_height="@dimen/mutual_dot"
+                android:layout_marginStart="@dimen/mutual_dot_overlap"
+                android:background="@drawable/bg_avatar_circle"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tv_mutual"
+                style="@style/Kinnect.Text.Caption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/mutual_text_gap"
+                android:includeFontPadding="false" />
+        </LinearLayout>
+
+        <!-- Confirm / Delete, or Add friend / Remove: equal width -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/request_buttons_top"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_primary"
+                style="@style/Kinnect.Button.Small"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:text="@string/friends_confirm" />
+
+            <Button
+                android:id="@+id/btn_secondary"
+                style="@style/Kinnect.Button.Small.Grey"
+                android:layout_width="0dp"
+                android:layout_marginStart="@dimen/space_8"
+                android:layout_weight="1"
+                android:text="@string/friends_delete" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

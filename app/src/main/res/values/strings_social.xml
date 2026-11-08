@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 4: texts for Friends (14) and Notifications (18). -->
+<resources>
+
+    <!-- Friends (14) -->
+    <string name="friends_add">Add friend</string>
+    <string name="friends_remove">Remove</string>
+    <string name="friends_mutual_count">%1$d mutual friends</string>
+    <string name="friends_mutual_one">1 mutual friend</string>
+    <string name="friends_no_mutual">New to Kinnect</string>
+    <string name="friends_no_requests">No friend requests right now.</string>
+    <string name="friends_no_suggestions">No suggestions yet. Search for people you know.</string>
+    <string name="friends_no_friends">You haven\'t added any friends yet.</string>
+    <string name="friends_count_title">%1$d</string>
+    <string name="friends_since">Friends since %1$s</string>
+    <string name="friends_request_confirmed">Request confirmed</string>
+    <string name="friends_suggestion_removed">Removed from suggestions</string>
+
+    <!-- Notifications (18): the name is bold (HTML), the quote is the comment text -->
+    <string name="notif_text_friend_request">&lt;b&gt;%1$s&lt;/b&gt; sent you a friend request.</string>
+    <string name="notif_text_friend_accepted">&lt;b&gt;%1$s&lt;/b&gt; accepted your friend request.</string>
+    <string name="notif_text_post_reaction">&lt;b&gt;%1$s&lt;/b&gt; reacted to your post.</string>
+    <string name="notif_text_comment">&lt;b&gt;%1$s&lt;/b&gt; commented on your post: “%2$s”</string>
+    <string name="notif_text_reply">&lt;b&gt;%1$s&lt;/b&gt; replied to your comment: “%2$s”</string>
+    <string name="notif_text_comment_like">&lt;b&gt;%1$s&lt;/b&gt; liked your comment: “%2$s”</string>
+    <string name="notif_text_story_reaction">&lt;b&gt;%1$s&lt;/b&gt; reacted to your story.</string>
+    <string name="notif_text_other">&lt;b&gt;%1$s&lt;/b&gt; interacted with you.</string>
+    <string name="notif_request_answered">Friend request answered</string>
+    <string name="notif_empty">No notifications yet. When people add you, react or comment, it shows here.</string>
+    <string name="notif_remove">Remove this notification</string>
+    <string name="notif_removed">Notification removed</string>
+    <string name="notif_someone">Someone</string>
+</resources>

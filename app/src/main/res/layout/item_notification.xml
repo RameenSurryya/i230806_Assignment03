@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One row on Notifications (18): avatar with a small badge (a reaction, or the type of
+     notification), the text with the name in bold, the time, Confirm / Delete for a friend
+     request that is still waiting, and "...". NotificationsActivity fills it in. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/notif_row_gap"
+    android:background="?attr/selectableItemBackground"
+    android:orientation="horizontal"
+    android:paddingStart="@dimen/screen_margin">
+
+    <FrameLayout
+        android:layout_width="@dimen/notif_avatar_frame"
+        android:layout_height="@dimen/notif_avatar_frame">
+
+        <TextView
+            android:id="@+id/tv_avatar"
+            style="@style/Kinnect.Avatar"
+            android:layout_width="@dimen/avatar_55"
+            android:layout_height="@dimen/avatar_55"
+            android:textSize="@dimen/text_avatar_55" />
+
+        <ImageView
+            android:id="@+id/iv_avatar_photo"
+            android:layout_width="@dimen/avatar_55"
+            android:layout_height="@dimen/avatar_55"
+            android:background="@drawable/bg_avatar_circle"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
+
+        <!-- Reaction badge (love, like ...): 18dp disc in a 4dp white ring -->
+        <FrameLayout
+            android:id="@+id/fl_reaction"
+            android:layout_width="@dimen/notif_reaction_frame"
+            android:layout_height="@dimen/notif_reaction_frame"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="@dimen/notif_reaction_inset"
+            android:layout_marginBottom="@dimen/notif_reaction_inset"
+            android:background="@drawable/bg_avatar_circle"
+            android:padding="@dimen/notif_reaction_ring"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/iv_reaction"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:importantForAccessibility="no" />
+        </FrameLayout>
+
+        <!-- Type badge (friend request, comment): 24dp disc in a 2dp white ring -->
+        <FrameLayout
+            android:id="@+id/fl_badge"
+            android:layout_width="@dimen/notif_badge_frame"
+            android:layout_height="@dimen/notif_badge_frame"
+            android:layout_gravity="bottom|end"
+            android:background="@drawable/bg_avatar_circle"
+            android:padding="@dimen/notif_badge_ring"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/iv_badge"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:importantForAccessibility="no" />
+        </FrameLayout>
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/notif_text_start"
+        android:layout_marginEnd="@dimen/notif_text_end"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_text"
+            style="@style/Kinnect.Text.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/figtree"
+            android:includeFontPadding="false"
+            android:lineSpacingExtra="@dimen/notif_line_spacing" />
+
+        <!-- Teal and bold while new, grey once seen -->
+        <TextView
+            android:id="@+id/tv_time"
+            style="@style/Kinnect.Text.Caption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/notif_line_spacing"
+            android:includeFontPadding="false" />
+
+        <!-- Confirm / Delete: only for a friend request that is still waiting -->
+        <LinearLayout
+            android:id="@+id/ll_request_buttons"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/notif_buttons_top"
+            android:layout_marginEnd="@dimen/notif_buttons_end"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <Button
+                android:id="@+id/btn_confirm"
+                style="@style/Kinnect.Button.Small"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/touch_target"
+                android:layout_weight="1"
+                android:background="@drawable/bg_touch_small_33"
+                android:text="@string/friends_confirm" />
+
+            <Button
+                android:id="@+id/btn_delete"
+                style="@style/Kinnect.Button.Small.Grey"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/touch_target"
+                android:layout_marginStart="@dimen/space_8"
+                android:layout_weight="1"
+                android:background="@drawable/bg_touch_grey_33"
+                android:text="@string/friends_delete" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- "...": remove this notification -->
+    <ImageView
+        android:id="@+id/iv_more"
+        style="@style/Kinnect.IconButton"
+        android:layout_marginTop="@dimen/post_action_shift"
+        android:layout_marginEnd="@dimen/notif_more_end"
+        android:contentDescription="@string/cd_more"
+        android:src="@drawable/ic_more"
+        app:tint="@color/text_grey" />
+</LinearLayout>
