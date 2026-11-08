@@ -1,24 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    21 Chat with Aisha Khan. Three parts in a vertical LinearLayout:
-      1. Pinned header (56dp): back, 36dp avatar with the green online dot (FrameLayout, dot
-         drawn last at bottom|end so it overlaps the avatar's edge), name + "Active now",
-         then phone / video / info in teal. Phone opens the Voice call screen.
-      2. ScrollView with static messages:
-         - intro: 66dp avatar, name, "You're friends on Kinnect · Lives in Karachi", time;
-         - Aisha's group of three grey bubbles, her 26dp avatar beside the last one
-           (gravity bottom). The bubbles use the _first / _middle / _last shapes, so the
-           corners where they join are 4dp;
-         - my two teal bubbles; a love reaction (FrameLayout) sits on the bottom-left
-           corner of the second one;
-         - "You replied to Aisha": the quoted grey bubble runs on behind my teal reply
-           (FrameLayout, reply drawn last);
-         - the lilac photo (ph_lilac, centerCrop, 18dp corners), the small "seen" avatar,
-           and Aisha's typing bubble with three dots.
-      3. Pinned input bar: plus, camera, gallery, mic, the "Aa" field with the emoji icon,
-         and the thumbs-up. Visual only (a TextView, so no keyboard pops up).
-    Measurements in dp come from design/screens/screen-21.png (dimens.xml, 21 Chat).
--->
+
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"

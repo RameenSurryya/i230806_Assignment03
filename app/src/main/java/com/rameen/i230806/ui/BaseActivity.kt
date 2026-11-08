@@ -5,16 +5,23 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.widget.ImageViewCompat
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.Query
+import com.google.firebase.database.ValueEventListener
 import com.rameen.i230806.R
+import com.rameen.i230806.data.Db
 import com.rameen.i230806.ui.chat.ChatsActivity
 import com.rameen.i230806.ui.home.HomeActivity
 import com.rameen.i230806.ui.home.SearchActivity
@@ -26,14 +33,17 @@ import com.rameen.i230806.ui.social.NotificationsActivity
 /**
  * Parent class of every Kinnect screen.
  *
- * It does four shared jobs so each screen stays short:
+ * It does six shared jobs so each screen stays short:
  *  1. Edge-to-edge system bars, so the screen's own background shows behind the status bar
  *     and the gesture bar (each layout root has android:fitsSystemWindows="true").
  *  2. The five top tabs (layout/include_top_tabs.xml): highlights the active tab and opens
  *     the others with FLAG_ACTIVITY_REORDER_TO_FRONT, so tab screens never pile up.
  *  3. The top bar (layout/include_top_bar.xml): page title (or the wordmark on Home via
  *     setupHomeTopBar()), search and messenger.
- *  4. A one-line helper for back arrows.
+ *  4. Live badges: the red number on messenger (chats with unread messages) and on the bell
+ *     (unread notifications), read from the database.
+ *  5. watch(): listens to a database path only while the screen is visible.
+ *  6. Small helpers: back arrows, opening screens, toasts.
  *
  * Usage in a tab screen:
  *   class FriendsActivity : BaseActivity() {
@@ -49,6 +59,9 @@ abstract class BaseActivity : AppCompatActivity() {
 
     /** Dark screens (camera, stories, voice call) return true to get white status bar icons. */
     protected open val darkSystemBars: Boolean = false
+
+    /** The logged-in user's id ("" when nobody is logged in). */
+    protected val myUid: String get() = Db.uid ?: ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,7 +101,7 @@ abstract class BaseActivity : AppCompatActivity() {
 
     /**
      * Highlights [active] (teal icon + teal underline), greys out the others and makes every
-     * other tab open its screen. Call after setContentView().
+     * other tab open its screen. Also starts the live bell badge. Call after setContentView().
      */
     protected fun setupTopTabs(active: Tab) {
         val teal = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.teal))
@@ -110,6 +123,7 @@ abstract class BaseActivity : AppCompatActivity() {
                 if (!isActive) openScreen(tab.screen, Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             }
         }
+        watchNotificationBadge()
     }
 
     // ---------------------------------------------------------------------------------------
@@ -129,7 +143,7 @@ abstract class BaseActivity : AppCompatActivity() {
         wireTopBarButtons()
     }
 
-    /** Search opens the Search screen, messenger opens the Chats list. */
+    /** Search opens the Search screen, messenger opens the Chats list; starts the messenger badge. */
     private fun wireTopBarButtons() {
         findViewById<View>(R.id.fl_search).setOnClickListener {
             openScreen(SearchActivity::class.java)
@@ -137,10 +151,93 @@ abstract class BaseActivity : AppCompatActivity() {
         findViewById<View>(R.id.fl_messenger).setOnClickListener {
             openScreen(ChatsActivity::class.java)
         }
+        watchMessengerBadge()
     }
 
     // ---------------------------------------------------------------------------------------
-    // 4. Back arrow and navigation
+    // 4. Live badges
+    // ---------------------------------------------------------------------------------------
+
+    /** Messenger badge = number of conversations that have unread messages. */
+    private fun watchMessengerBadge() {
+        val badge = findViewById<TextView>(R.id.tv_messenger_badge) ?: return
+        showBadge(badge, 0)
+        if (myUid.isEmpty()) return
+        watch(Db.userChats(myUid)) { snapshot ->
+            val unreadChats = snapshot.children.count {
+                (it.child("unread").getValue(Long::class.java) ?: 0L) > 0
+            }
+            showBadge(badge, unreadChats)
+        }
+    }
+
+    /** Bell badge = number of notifications not opened yet (read == false). */
+    private fun watchNotificationBadge() {
+        val badge = findViewById<TextView>(R.id.tv_tab_notifications_badge) ?: return
+        showBadge(badge, 0)
+        if (myUid.isEmpty()) return
+        watch(Db.notifications(myUid).orderByChild("read").equalTo(false)) { snapshot ->
+            showBadge(badge, snapshot.childrenCount.toInt())
+        }
+    }
+
+    /** Hides the badge at 0, shows "1".."9", then "9+". */
+    private fun showBadge(badge: TextView, count: Int) {
+        badge.visibility = if (count > 0) View.VISIBLE else View.GONE
+        badge.text = if (count > 9) getString(R.string.badge_many) else count.toString()
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // 5. Database listeners that follow the screen's lifecycle
+    // ---------------------------------------------------------------------------------------
+
+    /** One registered listener: the path it listens to and what to do on each change. */
+    protected class Watch(val query: Query, val listener: ValueEventListener)
+
+    private val watches = mutableListOf<Watch>()
+    private var isVisibleNow = false
+
+    /**
+     * Listens to [query] while this screen is visible: [onChange] runs with the current data and
+     * again after every change (from any phone). The listener is detached in onStop and attached
+     * again in onStart, so hidden screens don't keep downloading.
+     *
+     * Example: watch(Db.user(uid)) { snapshot -> showUser(snapshot.getValue(User::class.java)) }
+     */
+    protected fun watch(query: Query, onChange: (DataSnapshot) -> Unit): Watch {
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) = onChange(snapshot)
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.w(TAG, "Listener cancelled: ${error.message}")
+            }
+        }
+        val watch = Watch(query, listener)
+        watches.add(watch)
+        if (isVisibleNow) query.addValueEventListener(listener)
+        return watch
+    }
+
+    /** Stops one listener for good, e.g. Search drops the old query when the user types more. */
+    protected fun stopWatching(watch: Watch) {
+        if (isVisibleNow) watch.query.removeEventListener(watch.listener)
+        watches.remove(watch)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        isVisibleNow = true
+        watches.forEach { it.query.addValueEventListener(it.listener) }
+    }
+
+    override fun onStop() {
+        watches.forEach { it.query.removeEventListener(it.listener) }
+        isVisibleNow = false
+        super.onStop()
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // 6. Back arrow, navigation and messages
     // ---------------------------------------------------------------------------------------
 
     /** Makes the view [buttonId] (back arrow, X, Cancel) close this screen and return to the previous one. */
@@ -148,8 +245,26 @@ abstract class BaseActivity : AppCompatActivity() {
         findViewById<View>(buttonId).setOnClickListener { finish() }
     }
 
-    /** Opens [screen] with an explicit Intent, plus optional flags (e.g. REORDER_TO_FRONT for tabs). */
-    protected fun openScreen(screen: Class<out Activity>, flags: Int = 0) {
-        startActivity(Intent(this, screen).addFlags(flags))
+    /**
+     * Opens [screen] with an explicit Intent, plus optional flags and extras, e.g.
+     * openScreen(OtherProfileActivity::class.java) { putExtra(Extra.UID, uid) }
+     */
+    protected fun openScreen(
+        screen: Class<out Activity>,
+        flags: Int = 0,
+        extras: Intent.() -> Unit = {},
+    ) {
+        startActivity(Intent(this, screen).addFlags(flags).apply(extras))
+    }
+
+    /** Short message at the bottom of the screen. */
+    protected fun toast(@StringRes message: Int) =
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+
+    protected fun toast(message: String) =
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+
+    private companion object {
+        const val TAG = "Kinnect"
     }
 }

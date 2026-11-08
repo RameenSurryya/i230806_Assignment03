@@ -1,20 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    11 Story viewer: Omar Farooq's story. Visual only: the photo is the ph_night placeholder.
 
-    Near-black screen with two parts, the same frame as the story editor (10):
-     1. The rounded viewport (FrameLayout, weight 1): the photo, then on top of it the
-        progress bar and header (one vertical LinearLayout at the top) and the rotated
-        "Karachi nights" sticker. StoryViewerActivity turns on clipToOutline for the corners.
-     2. The bottom bar: "Send message..." outline pill (weight 1) and three reaction buttons.
-
-    Progress bar: four equal segments (Kinnect.StorySegment). Stories 1 and 2 are seen (white),
-    story 3 is playing (half white: a white View and an empty Space with equal weights inside a
-    translucent segment), story 4 is still to come (translucent).
-    The sticker is a TextView turned 3 degrees anticlockwise with android:rotation (the right
-    end is higher in the PNG), centred and pushed 30.5dp up from the viewport centre.
-    Measurements in dp come from design/screens/screen-11.png (dimens.xml, Story viewer section).
--->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"

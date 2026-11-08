@@ -1,13 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    01 Splash: full teal screen, the white logo and "kinnect" wordmark in the middle,
-    "from SMD" near the bottom. SplashActivity opens Login after about 2 seconds.
 
-    ScrollView (fillViewport) keeps the screen scrollable like every other screen; on a normal
-    phone it simply fills the screen. Inside, a FrameLayout lets the two groups be positioned
-    independently: the logo group is centred on the screen (shifted 20dp down), the "from SMD"
-    group sits at the bottom (measured: logo 60dp; "SMD" baseline 52dp above the bottom edge).
--->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"

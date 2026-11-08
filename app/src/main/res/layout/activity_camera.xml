@@ -1,21 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    09 Camera. Visual only: the "camera picture" is the ph_sage placeholder, no real camera.
 
-    Near-black screen with two parts:
-     1. The rounded viewport (FrameLayout, weight 1 so it fills the height): the photo, then
-        on top of it the brightness and close circles (top corners) and the bottom row
-        (gallery thumb, flash, shutter, flip, effects). CameraActivity turns on clipToOutline
-        so the photo is cut to the 16dp corners of bg_camera_frame.
-     2. The mode labels under it: TEXT, LIVE, STORY (selected, white with an underline),
-        POST, BOOMERANG. They sit in a HorizontalScrollView, so on narrow phones the last
-        word is cut off at the right edge instead of wrapping.
-
-    The bottom row is a LinearLayout: the shutter in the middle and two weighted groups on
-    each side. The weights 131 : 135 are the widths of the two sides in the design (the
-    shutter sits 2dp left of centre), so the row stretches evenly on every phone width.
-    Measurements in dp come from design/screens/screen-09.png (dimens.xml, Camera section).
--->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"

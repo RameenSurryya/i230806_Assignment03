@@ -1,14 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    19 Menu. Pinned at the top: the shared top bar ("Menu", small search / messenger circles via
-    ThemeOverlay.Kinnect.TopBarSmall) and the five tabs (Menu active, set in MenuActivity).
-    The rest scrolls on the warm page colour:
-      1. profile card (JW avatar, Jacob West, See your profile, chevron) -> Profile,
-      2. "All shortcuts" and a 2-column GridLayout of six white cards (equal column weights),
-      3. See more, three "expandable" rows separated by 1dp dividers, and Log out.
-    Only the profile card, Friends, Marketplace and Log out navigate (MenuActivity).
-    Measurements in dp come from design/screens/screen-19.png (dimens.xml, 19 Menu).
--->
+
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"

@@ -1,17 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    15 Profile (your own profile, Jacob West). Pinned at the top: back arrow, name and search.
-    Everything below scrolls: cover photo with the big JW avatar, name, friend count, bio,
-    the three buttons, the section pills, Details and the Friends tiles.
 
-    Overlaps: the cover and the avatar share a FrameLayout. The avatar frame starts 109dp below
-    the cover's top, so its top half sits on the cover and its bottom half below it. The white
-    ring is the frame's own white circle with the 130dp JW disc 4dp inside it. Each camera badge
-    is drawn last in its FrameLayout, at bottom|end, so it sits on top.
-
-    Text views use includeFontPadding="false", so the margins below are the real gaps.
-    Measurements in dp come from design/screens/screen-15.png (dimens.xml, 15 Profile section).
--->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"

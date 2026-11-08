@@ -2,8 +2,46 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Every Activity is locked to portrait (phones only, see CLAUDE.md). -->
+    <!-- ===== Permissions =====
+         Normal permissions are granted at install. The "dangerous" ones (camera, microphone,
+         photos, notifications) are also asked for at runtime, on the screen that needs them. -->
+
+    <!-- Firebase, Agora and push notifications talk to the internet -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Push notifications (Android 13+ asks the user) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Camera screen (09) and video calls; microphone for video stories and calls -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- Photo picker (08): read the gallery. Android 13+ splits images and videos;
+         Android 14+ can give access to selected photos only; Android 12 and older use
+         the old storage permission. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <!-- Screenshot detection in chats (Android 14+ official callback) -->
+    <uses-permission android:name="android.permission.DETECT_SCREEN_CAPTURE" />
+
+    <!-- The app works without a camera (e.g. picking from the gallery instead) -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <!-- KinnectApp runs before any screen: online/offline status and notification channels.
+         Every Activity is locked to portrait (phones only). -->
     <application
+        android:name=".KinnectApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -51,12 +89,14 @@
         <!-- 06 Comments -->
         <activity
             android:name=".ui.home.CommentsActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- 07 Create post -->
         <activity
             android:name=".ui.home.CreatePostActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- 08 Photo picker -->
         <activity
@@ -71,7 +111,8 @@
         <!-- 10 Story editor -->
         <activity
             android:name=".ui.home.StoryEditorActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- 11 Story viewer -->
         <activity
@@ -128,7 +169,8 @@
         <!-- 21 Chat -->
         <activity
             android:name=".ui.chat.ChatActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- 22 Voice call -->
         <activity
@@ -139,6 +181,48 @@
         <activity
             android:name=".ui.market.MarketplaceActivity"
             android:screenOrientation="portrait" />
+
+        <!-- ===== Extra screens (not in the design, same design language) ===== -->
+
+        <!-- Share a post into a chat (Step 5) -->
+        <activity
+            android:name=".ui.chat.ShareToChatActivity"
+            android:screenOrientation="portrait" />
+
+        <!-- Video call (Step 7) -->
+        <activity
+            android:name=".ui.chat.VideoCallActivity"
+            android:screenOrientation="portrait" />
+
+        <!-- Incoming call: also shows over the lock screen and wakes the screen (Step 7) -->
+        <activity
+            android:name=".ui.chat.IncomingCallActivity"
+            android:screenOrientation="portrait"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            tools:targetApi="27" />
+
+        <!-- ===== Push notifications (Step 7) ===== -->
+
+        <!-- Receives push messages from Firebase Cloud Messaging -->
+        <service
+            android:name=".push.KinnectMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Don't create a push token automatically: the app asks for one after login, so the
+             token is always saved under the logged-in user. -->
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="false" />
+
+        <!-- Channel for push messages that don't name one (created in KinnectApp) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="messages" />
     </application>
 
 </manifest>

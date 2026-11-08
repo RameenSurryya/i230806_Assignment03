@@ -1,21 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    10 Story editor. Visual only: the photo is the ph_sage placeholder.
 
-    Near-black screen with two parts:
-     1. The rounded viewport (FrameLayout, weight 1), same as the camera (09): the photo,
-        the close circle (top-left), five tool circles (top-right) and the rotated
-        "Saturday plans" sticker. StoryEditorActivity turns on clipToOutline for the corners.
-     2. The bottom bar: "Your story" and "Close friends" pills (equal weights, content
-        centred) and the teal next arrow.
-
-    The tool circles are 48dp touch areas with a 40dp visible circle; the circles are 6dp
-    apart in the design, so the 48dp views overlap by 2dp (negative margin).
-    The sticker is a TextView turned 3 degrees clockwise with android:rotation (the right
-    end is lower in the PNG). It is centred vertically and pushed 74dp down, so it keeps its
-    place on the picture (centerCrop also centres the picture) on taller or shorter phones.
-    Measurements in dp come from design/screens/screen-10.png (dimens.xml, Story editor section).
--->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"

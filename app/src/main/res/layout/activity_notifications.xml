@@ -1,17 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    18 Notifications. Pinned at the top: the shared top bar ("Notifications", small search /
-    messenger circles via ThemeOverlay.Kinnect.TopBarSmall) and the five tabs (Notifications
-    active, set in NotificationsActivity). The rest scrolls: "New" with its two unread rows on a
-    light teal band, "Earlier" with four rows, and "See previous notifications".
 
-    Notification row = horizontal LinearLayout:
-      1. a 59dp FrameLayout holding the 55dp initials avatar and, drawn last at bottom|end so it
-         sits on top, the type badge (coloured disc inside a white circle that forms the ring),
-      2. a text column: the sentence (names bold through <b> in strings.xml) and the time,
-      3. the "..." button (visual only), shifted up so it lines up with the first text line.
-    Measurements in dp come from design/screens/screen-18.png (dimens.xml, 18 Notifications).
--->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"

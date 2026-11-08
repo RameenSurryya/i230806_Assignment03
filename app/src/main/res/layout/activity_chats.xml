@@ -1,16 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    20 Chats. Pinned at the top: back arrow, "Chats" and the grey compose circle. Pinned at the
-    bottom: the Chats / People / Stories nav (Chats active, visual only). The middle scrolls:
-      1. the grey "Search" pill,
-      2. the notes row (HorizontalScrollView): "Your note" + four friends, each a 52dp avatar in a
-         FrameLayout with the green online dot drawn last at bottom|end so it overlaps the edge,
-      3. six conversation rows: avatar (Design crew = two overlapping 33dp avatars), a text
-         column with the name and "message · time", and the unread / seen dot on the right.
-         Unread rows use the .Unread text styles (bold name, SemiBold dark message).
-    Every row opens the Chat screen (ChatsActivity).
-    Measurements in dp come from design/screens/screen-20.png (dimens.xml, 20 Chats).
--->
+
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"

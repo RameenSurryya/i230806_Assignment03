@@ -1,18 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    08 Photo picker. Pinned at the top: "Cancel", "Recents" + chevron (centred), "Next (2)".
-    Pinned at the bottom: the Gallery / Photo / Video strip with a teal line over Gallery.
-    The ScrollView holds the large preview and the 4 x 4 photo grid.
 
-    Preview: a FrameLayout so the dark expand circle (bottom-left) and the teal
-    "SELECT MULTIPLE" pill (bottom-right) are drawn on top of the photo.
-    Grid: a GridLayout with 4 equal-weight columns. Each tile is a FrameLayout: the photo,
-    then on top its selection circle in the top-right corner. Photo 1 also gets a teal frame
-    and the "1" circle, the rose photo the "2" circle, the night photo the "0:23" label.
-    Selecting photos is visual only. Every placeholder is a square picture, so centerCrop
-    shows the whole picture in a tile and the wide middle band in the preview (ICONS.md).
-    Measurements in dp come from design/screens/screen-08.png (dimens.xml, Photo picker section).
--->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"

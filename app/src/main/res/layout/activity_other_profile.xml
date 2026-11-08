@@ -1,18 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    17 Other profile (Omar Farooq). Pinned at the top: back arrow, name and search (same toolbar
-    as 15 Profile). Everything below scrolls: night cover photo with the big OF avatar, name,
-    counts, bio, the three buttons, the mutual friends line, the intro details and three photos.
 
-    Overlaps: the cover and the avatar share a FrameLayout. The avatar frame starts 93dp below
-    the cover's top and is centred, so its top part sits on the cover and the rest below it.
-    The ring is bg_profile_ring (teal edge + white gap) with the 131dp OF disc 6.5dp inside it.
-    The three mutual-friend avatars use a negative start margin, so each one overlaps the one
-    before it (later views draw on top).
-
-    Text views use includeFontPadding="false", so the margins below are the real gaps.
-    Measurements in dp come from design/screens/screen-17.png (dimens.xml, 17 Other profile).
--->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"

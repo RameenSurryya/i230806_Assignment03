@@ -1,16 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    14 Friends. Pinned at the top: the shared top bar ("Friends", small search / messenger
-    circles via ThemeOverlay.Kinnect.TopBarSmall) and the five tabs (Friends active, set in
-    FriendsActivity). The rest scrolls: Suggestions / Your friends chips, the "Friend requests 12"
-    header with "See all", four request rows, a divider and the "People you may know" header.
 
-    Request row = horizontal LinearLayout: 74dp initials avatar + a text column. The column holds
-      1. name (left, weight 1) and time (right), top-aligned,
-      2. two overlapping 15dp mutual-friend discs (negative margin) + "N mutual friends",
-      3. Confirm and Delete, equal width (layout_weight 1 each).
-    Measurements in dp come from design/screens/screen-14.png (dimens.xml, 14 Friends section).
--->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"

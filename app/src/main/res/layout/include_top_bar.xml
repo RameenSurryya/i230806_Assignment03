@@ -1,23 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    Shared top bar of the tab screens (04, 14, 18, 19, 23): the page title (or the "kinnect"
-    wordmark on Home) on the left, and the search and messenger circles on the right.
-    BaseActivity.setupTopBar() / setupHomeTopBar() set the title and wire the two buttons.
 
-    Two sizes, picked by the including screen with no code:
-      Home (04):          <include layout="@layout/include_top_bar" />
-      14, 18, 19, 23:     <include layout="@layout/include_top_bar"
-                              android:theme="@style/ThemeOverlay.Kinnect.TopBarSmall" />
-    The circles, badge and touch frames take their sizes from style="?attr/topBar...Style":
-    the app theme points those at the large styles, the overlay at the small ones (styles.xml).
-
-    Measured: row 48dp; title 1dp below the row centre. Large (04): circles 36dp, 8dp apart,
-    16dp from the right edge, y 8-44, 19dp icons, 18dp badge. Small (14-23): circles 31dp,
-    6.5dp apart, 18dp from the edge, centred at y 27, 16dp icons, 15dp badge.
-    Each circle sits in a 48dp FrameLayout (the touch target); the frames overlap (negative
-    margin) so the circles keep the design's gap. A paddingTop on each frame moves the circle
-    a little below the row centre while the whole 48dp frame stays inside the bar.
--->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"

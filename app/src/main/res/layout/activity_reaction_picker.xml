@@ -1,14 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    05 Reaction picker (opened by long-pressing Like on Home).
-    Three layers in one FrameLayout, drawn in order:
-      1. the post screen ("Lina's post": toolbar, post, full-width photo, Like row, one comment)
-      2. a dim View over all of it (black 30 %; tapping it closes the picker)
-      3. the "Love" tooltip and the white reaction pill, on top and not dimmed.
-    The pill and tooltip sit at fixed distances from the top so they land over the bottom of
-    the photo, as in design/screens/screen-05.png. clipChildren="false" lets the enlarged love
-    reaction stick out above the pill.
--->
+
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"

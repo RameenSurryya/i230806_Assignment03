@@ -1,18 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    13 Search. Pinned at the top: back arrow + grey search field ("omar" typed in it), the
-    filter chips and a divider. Below, a ScrollView with the static results: People (three
-    person rows + See all people), Groups (one group row with Join) and Recent searches.
 
-    Every result row is a horizontal LinearLayout: avatar, a text column with layout_weight 1
-    (so long text ellipsizes instead of pushing the right-hand button off screen), then the
-    optional button on the right. Rows have a fixed height and centre their content, which gives
-    the same row pitch as the design (62.5dp person rows, 44dp recent rows).
-    Measurements in dp come from design/screens/screen-13.png (dimens.xml, 13 Search section).
-
-    focusableInTouchMode on the root keeps the search field from grabbing focus (and showing a
-    blinking cursor) when the screen opens.
--->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"

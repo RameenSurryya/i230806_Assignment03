@@ -1,13 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    22 Voice call with Ammi. Teal screen in two parts:
-      1. ScrollView (centred column): lock + "End-to-end encrypted"; the 144dp rounded-square
-         "AM" avatar inside two soft rings (FrameLayouts: outer 5 % ring drawn as a stroke,
-         inner 12 % rounded square, avatar on top); "Ammi" with a love heart; the call time.
-      2. Pinned controls at the bottom: transcript, mute, the red end-call button (ends the
-         call: back to Chat) and speaker. Visual only: no microphone, speaker or call API.
-    Measurements in dp come from design/screens/screen-22.png (dimens.xml, 22 Voice call).
--->
+
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"

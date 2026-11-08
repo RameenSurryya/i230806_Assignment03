@@ -1,12 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    03 Sign up (step 2 of 3): header with back arrow and step count, 3-part step bar, heading
-    with a photo circle, name fields, birthday dropdowns, gender options, e-mail, password with
-    a strength meter, terms checkbox, Create account and the "Log in" link.
 
-    The header and step bar are pinned; everything below scrolls (ScrollView).
-    Measurements in dp come from design/screens/screen-03.png (20dp side margins).
--->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
