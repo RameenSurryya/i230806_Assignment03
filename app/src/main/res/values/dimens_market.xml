@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 8: sizes added for Marketplace (23). -->
+<resources>
+    <!-- Grid: each tile has 4dp on both sides, so two tiles are 8dp apart (market_gap);
+         the list is pulled out 4dp so the outer tiles still line up with the 16dp margin. -->
+    <dimen name="market_half_gap">4dp</dimen>
+    <dimen name="market_half_gap_negative">-4dp</dimen>
+    <dimen name="market_empty_margin">32dp</dimen>
+</resources>

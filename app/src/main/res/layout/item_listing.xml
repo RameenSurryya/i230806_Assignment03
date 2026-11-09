@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One product in the Marketplace grid (23): square photo with the orange JUST LISTED label
+     over its corner, then price, title and area. Same styles as Assignment 1. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="@dimen/market_half_gap"
+    android:paddingEnd="@dimen/market_half_gap"
+    android:paddingBottom="@dimen/market_row_gap">
+
+    <!-- FrameLayout: the label overlaps the photo's top-left corner -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/market_photo_height">
+
+        <ImageView
+            android:id="@+id/iv_photo"
+            style="@style/Kinnect.Product.Photo"
+            android:importantForAccessibility="no" />
+
+        <TextView
+            android:id="@+id/tv_just_listed"
+            style="@style/Kinnect.Product.Label" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/tv_price"
+        style="@style/Kinnect.Text.Price" />
+
+    <TextView
+        android:id="@+id/tv_title"
+        style="@style/Kinnect.Text.ProductTitle" />
+
+    <TextView
+        android:id="@+id/tv_place"
+        style="@style/Kinnect.Text.Caption.Place" />
+</LinearLayout>

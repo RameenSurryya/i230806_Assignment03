@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 8: texts for Marketplace (23). -->
+<resources>
+    <string name="market_empty">Nothing for sale yet. Tap Sell to list something.</string>
+    <string name="market_sell_title">Sell an item</string>
+    <string name="market_sell_what">What are you selling?</string>
+    <string name="market_sell_price">Price, e.g. Rs 2,500</string>
+    <string name="market_sell_place">Area, e.g. Clifton</string>
+    <string name="market_sell_post">List it</string>
+    <string name="market_sell_cancel">Cancel</string>
+    <string name="market_sell_missing">Add what you\'re selling and its price.</string>
+    <string name="market_listed">Listed on Marketplace</string>
+    <string name="cd_listing">%1$s, %2$s, %3$s</string>
+</resources>

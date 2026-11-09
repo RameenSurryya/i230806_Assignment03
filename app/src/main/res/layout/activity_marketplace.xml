@@ -30,14 +30,16 @@
             android:paddingEnd="@dimen/screen_margin"
             android:paddingBottom="@dimen/space_16">
 
-            <!-- ===== Sell / Categories: two equal grey pills (visual only) ===== -->
+            <!-- ===== Sell (list an item) / Categories (visual only): two equal grey pills ===== -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/market_chips_top"
                 android:orientation="horizontal">
 
-                <LinearLayout style="@style/Kinnect.MarketPill">
+                <LinearLayout
+                    android:id="@+id/ll_sell"
+                    style="@style/Kinnect.MarketPill">
 
                     <ImageView
                         style="@style/Kinnect.MarketPill.Icon"
@@ -105,130 +107,26 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- ===== Row 1: road bike (JUST LISTED, sage) | rattan armchair (rose) ===== -->
-            <LinearLayout
+            <!-- ===== Products: two columns of item_listing.xml, newest first. Its own scrolling
+                 is off, so the whole page scrolls as one. ===== -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_listings"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/market_half_gap_negative"
                 android:layout_marginTop="@dimen/market_grid_top"
-                android:orientation="horizontal">
+                android:layout_marginEnd="@dimen/market_half_gap_negative" />
 
-                <LinearLayout style="@style/Kinnect.Product">
-
-                    <!-- FrameLayout: the label overlaps the photo's top-left corner -->
-                    <FrameLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="@dimen/market_photo_height">
-
-                        <ImageView
-                            android:id="@+id/iv_product_bike"
-                            style="@style/Kinnect.Product.Photo"
-                            android:src="@drawable/ph_sage" />
-
-                        <TextView style="@style/Kinnect.Product.Label" />
-                    </FrameLayout>
-
-                    <TextView
-                        style="@style/Kinnect.Text.Price"
-                        android:text="@string/market_price_bike" />
-
-                    <TextView
-                        style="@style/Kinnect.Text.ProductTitle"
-                        android:text="@string/market_title_bike" />
-
-                    <TextView
-                        style="@style/Kinnect.Text.Caption.Place"
-                        android:text="@string/market_place_bike" />
-                </LinearLayout>
-
-                <LinearLayout
-                    style="@style/Kinnect.Product"
-                    android:layout_marginStart="@dimen/market_gap">
-
-                    <FrameLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="@dimen/market_photo_height">
-
-                        <ImageView
-                            android:id="@+id/iv_product_chair"
-                            style="@style/Kinnect.Product.Photo"
-                            android:src="@drawable/ph_rose" />
-                    </FrameLayout>
-
-                    <TextView
-                        style="@style/Kinnect.Text.Price"
-                        android:text="@string/market_price_chair" />
-
-                    <TextView
-                        style="@style/Kinnect.Text.ProductTitle"
-                        android:text="@string/market_title_chair" />
-
-                    <TextView
-                        style="@style/Kinnect.Text.Caption.Place"
-                        android:text="@string/market_place_chair" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- ===== Row 2: study desk (sky) | plant pots (JUST LISTED, sand) ===== -->
-            <LinearLayout
+            <TextView
+                android:id="@+id/tv_empty"
+                style="@style/Kinnect.Text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/market_row_gap"
-                android:orientation="horizontal">
-
-                <LinearLayout style="@style/Kinnect.Product">
-
-                    <FrameLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="@dimen/market_photo_height">
-
-                        <ImageView
-                            android:id="@+id/iv_product_desk"
-                            style="@style/Kinnect.Product.Photo"
-                            android:src="@drawable/ph_sky" />
-                    </FrameLayout>
-
-                    <TextView
-                        style="@style/Kinnect.Text.Price"
-                        android:text="@string/market_price_desk" />
-
-                    <TextView
-                        style="@style/Kinnect.Text.ProductTitle"
-                        android:text="@string/market_title_desk" />
-
-                    <TextView
-                        style="@style/Kinnect.Text.Caption.Place"
-                        android:text="@string/market_place_desk" />
-                </LinearLayout>
-
-                <LinearLayout
-                    style="@style/Kinnect.Product"
-                    android:layout_marginStart="@dimen/market_gap">
-
-                    <FrameLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="@dimen/market_photo_height">
-
-                        <ImageView
-                            android:id="@+id/iv_product_pots"
-                            style="@style/Kinnect.Product.Photo"
-                            android:src="@drawable/ph_sand" />
-
-                        <TextView style="@style/Kinnect.Product.Label" />
-                    </FrameLayout>
-
-                    <TextView
-                        style="@style/Kinnect.Text.Price"
-                        android:text="@string/market_price_pots" />
-
-                    <TextView
-                        style="@style/Kinnect.Text.ProductTitle"
-                        android:text="@string/market_title_pots" />
-
-                    <TextView
-                        style="@style/Kinnect.Text.Caption.Place"
-                        android:text="@string/market_place_pots" />
-                </LinearLayout>
-            </LinearLayout>
+                android:layout_margin="@dimen/market_empty_margin"
+                android:gravity="center_horizontal"
+                android:text="@string/market_empty"
+                android:textColor="@color/text_grey"
+                android:visibility="gone" />
         </LinearLayout>
     </ScrollView>
 </LinearLayout>
