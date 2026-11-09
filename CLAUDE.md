@@ -1,6 +1,7 @@
-# Kinnect – rules for Claude Code
+﻿# Kinnect – rules for Claude Code
 
-Android app (package com.rameen.i230806). 23 screens copied from design/screens/screen-NN.png.
+Android app (package com.rameen.i230806). 23 screens copied from design/screens/screen-NN.png
+(Assignment 1), connected to a Firebase backend (Assignment 2, see README.md).
 
 Read first: @docs/SCREENS.md @docs/DESIGN_TOKENS.md @docs/ICONS.md @docs/PROGRESS.md
 
@@ -22,7 +23,7 @@ Read first: @docs/SCREENS.md @docs/DESIGN_TOKENS.md @docs/ICONS.md @docs/PROGRES
 
 4. GridLayout for true grids (photo picker, marketplace, shortcuts).
 
-5. ScrollView / HorizontalScrollView with static sample content. No RecyclerView unless truly needed.
+5. ScrollView / HorizontalScrollView; RecyclerView for lists filled from the database.
 
 6. Basic widgets only: TextView, ImageView, Button, EditText, CheckBox, RadioGroup, Spinner, ProgressBar, View.
 
@@ -48,31 +49,25 @@ Follow these in every screen. Tablets and landscape are out of scope; the app is
 - Test target: a 360x800dp emulator for pixel matching, plus one other phone size for the
   complex screens.
 
-## Scope: UI only
+## Scope (Assignment 2: Firebase backend)
 
-Follow these in every screen.
+Assignment 1 was UI only. Assignment 2 connects the same screens to Firebase. Follow these now:
 
-- This assignment is UI only. No backend, database, network, authentication logic, data models,
-  ViewModels, Retrofit, Room or permission requests.
-- All content is static sample text and the drawables already in res/drawable, copied from the
-  PDF screens.
-- Kotlin is limited to: starting activities with Intents, finish(), back handling, the log out
-  flag, and tiny UI toggles that XML cannot do (show or hide the password, switch the selected
-  tab or chip). Keep each Activity as short as possible.
-- Buttons that do not lead to another screen in the navigation flow do nothing (no toasts, no
-  fake logic), unless the design shows a visual state change XML alone can do.
-- Camera, photo picker, voice call and chat are visual screens only. Do not use the camera,
-  microphone, storage or any real device API.
-- Prefer XML-only solutions (selectors, styles, android:visibility, android:rotation) over
-  Kotlin, because the marks for "simple widgets" reward XML without Kotlin code.
-
-## Advanced concepts
-
-Before using ConstraintLayout, RecyclerView, animations or custom drawing: STOP and tell me
-
-the screen, the element, why basic XML cannot do it, and what you propose.
-
-Mark it in XML with <!-- ADVANCED: reason -->.
+- Backend: Firebase Auth (email/password), Realtime Database, Cloud Messaging. Free Spark plan
+  only: no Firebase Storage, no Cloud Functions, nothing that needs Blaze.
+- Photos and videos are Base64 text under media/ (util/Images.kt). Videos at most 15 s / 5 MB.
+- Every database path lives in data/Db.kt; every stored class in data/Models.kt. Screens use the
+  repos in data/ (FriendRepo, PostRepo, StoryRepo, ChatRepo, CallRepo) for writes.
+- Live data: BaseActivity.watch() (attached in onStart, removed in onStop). Lists: RecyclerView.
+- Several related writes go in one multi-path updateChildren; counters use ServerValue.increment.
+- Approved libraries: Firebase BoM, CameraX, Agora RTC, RecyclerView. Ask before adding others.
+- Secrets never go in Git: app/google-services.json, app/src/main/assets/service-account.json,
+  app/src/main/assets/agora-certificate.txt (all in .gitignore).
+- Security rules: database.rules.json (same as published in the Firebase console). Keep them in
+  sync with any new path or query (.indexOn).
+- Runtime permissions (camera, microphone, gallery, notifications) are asked on the screen that
+  needs them.
+- New text in values/strings_<step>.xml, new sizes in values/dimens_<step>.xml.
 
 ## Naming
 
@@ -137,4 +132,3 @@ Follow these for every screen.
 2. Tick the screen in docs/PROGRESS.md.
 
 3. git commit with a meaningful message ("feat: add Login screen ..."), then git push.
-
