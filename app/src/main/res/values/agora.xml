@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 7c: your Agora project's App ID (console.agora.io, project in "Testing mode: App ID").
+     An App ID is meant to live inside the app; the App Certificate is the secret part and is
+     never put in this project. -->
+<resources>
+    <string name="agora_app_id" translatable="false">4eedc50be03a4abf9c14f3c29db89669</string>
+</resources>

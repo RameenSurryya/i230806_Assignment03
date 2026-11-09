@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 7c: texts for Voice call (22), Video call and Incoming call. -->
+<resources>
+    <!-- Call status under the name -->
+    <string name="call_calling">Calling…</string>
+    <string name="call_connecting">Connecting…</string>
+    <string name="call_incoming_voice">Incoming voice call</string>
+    <string name="call_incoming_video">Incoming video call</string>
+
+    <!-- Why a call ended (toasts) -->
+    <string name="call_declined">Call declined</string>
+    <string name="call_no_answer">No answer</string>
+    <string name="call_ended">Call ended</string>
+    <string name="call_busy">%1$s is on another call</string>
+    <string name="call_need_mic">Calls need the microphone. Allow it to call.</string>
+    <string name="call_need_camera">Video calls need the camera and microphone.</string>
+    <string name="call_no_app_id">Add your Agora App ID in res/values/agora.xml to make calls.</string>
+    <string name="call_error">Couldn\'t connect the call. Check your internet and try again.</string>
+
+    <!-- Grey lines added to the chat by the caller -->
+    <string name="call_msg_voice">Voice call · %1$s</string>
+    <string name="call_msg_video">Video call · %1$s</string>
+    <string name="call_msg_missed_voice">Missed voice call</string>
+    <string name="call_msg_missed_video">Missed video call</string>
+
+    <!-- Buttons -->
+    <string name="cd_answer_call">Answer</string>
+    <string name="cd_decline_call">Decline</string>
+    <string name="cd_unmute">Unmute</string>
+    <string name="cd_camera_off">Turn camera off</string>
+    <string name="cd_camera_on">Turn camera on</string>
+    <string name="cd_your_video">Your camera</string>
+    <string name="cd_their_video">Their camera</string>
+</resources>

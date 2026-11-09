@@ -23,3 +23,5 @@ google-services.json
 app/google-services.json
 # Service-account key used to send push notifications (Step 7)
 app/src/main/assets/service-account.json
+# Agora App Certificate, used by AgoraToken to make call tokens (Step 7c)
+app/src/main/assets/agora-certificate.txt

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Green answer button (Incoming call): same 72dp rounded square as the red end-call button. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/online_green" />
+    <corners android:radius="@dimen/radius_call_end" />
+</shape>

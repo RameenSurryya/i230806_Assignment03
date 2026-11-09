@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 7c: sizes added for Video call and Incoming call. -->
+<resources>
+    <dimen name="video_local_width">108dp</dimen>     <!-- my own camera, small in the corner -->
+    <dimen name="video_local_height">160dp</dimen>
+    <dimen name="video_local_margin">16dp</dimen>
+    <dimen name="video_waiting_top">96dp</dimen>      <!-- avatar while waiting for their video -->
+    <dimen name="incoming_buttons_gap">96dp</dimen>   <!-- between Decline and Answer -->
+    <dimen name="incoming_label_top">8dp</dimen>
+</resources>

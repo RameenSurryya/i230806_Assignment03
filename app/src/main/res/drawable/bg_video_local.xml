@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Frame of my own camera in a video call: dark rounded rectangle; the video inside is
+     clipped to it (clipToOutline in VideoCallActivity). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/camera_bg" />
+    <corners android:radius="@dimen/radius_card" />
+</shape>
