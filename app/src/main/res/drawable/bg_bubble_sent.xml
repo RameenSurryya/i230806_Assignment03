@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Chat bubble, teal bubble from me (right side, 21).
+     A single message (not part of a group): all corners 18dp. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/teal" />
+    <corners android:radius="@dimen/radius_bubble" />
+</shape>

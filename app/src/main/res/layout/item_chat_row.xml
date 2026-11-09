@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One conversation on Chats (20): avatar with the green online dot, name, last message and
+     time, and the teal dot while there are unread messages. Bold name and dark message when
+     unread (set in ChatsActivity). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/Kinnect.ChatRow">
+
+    <FrameLayout style="@style/Kinnect.ChatRow.Avatar">
+
+        <TextView
+            android:id="@+id/tv_avatar"
+            style="@style/Kinnect.Avatar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:textSize="@dimen/text_avatar_52" />
+
+        <ImageView
+            android:id="@+id/iv_avatar_photo"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_avatar_circle"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
+
+        <View
+            android:id="@+id/v_online"
+            style="@style/Kinnect.OnlineDot"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <LinearLayout style="@style/Kinnect.ChatRow.Text">
+
+        <TextView
+            android:id="@+id/tv_name"
+            style="@style/Kinnect.Text.ChatName" />
+
+        <LinearLayout style="@style/Kinnect.ChatRow.MessageLine">
+
+            <TextView
+                android:id="@+id/tv_message"
+                style="@style/Kinnect.Text.ChatMessage" />
+
+            <TextView
+                android:id="@+id/tv_time"
+                style="@style/Kinnect.Text.ChatTime" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <View
+        android:id="@+id/v_unread"
+        style="@style/Kinnect.UnreadDot"
+        android:visibility="gone" />
+</LinearLayout>

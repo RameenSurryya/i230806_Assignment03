@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One friend who is online, in the notes row at the top of Chats (20): avatar with the
+     green dot and the first name. Tap: chat with them. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/Kinnect.ChatNote"
+    android:layout_marginStart="@dimen/chats_note_gap"
+    android:background="?attr/selectableItemBackground">
+
+    <FrameLayout style="@style/Kinnect.ChatRow.Avatar">
+
+        <TextView
+            android:id="@+id/tv_avatar"
+            style="@style/Kinnect.Avatar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:textSize="@dimen/text_avatar_52" />
+
+        <ImageView
+            android:id="@+id/iv_avatar_photo"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_avatar_circle"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
+
+        <View style="@style/Kinnect.OnlineDot" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/tv_name"
+        style="@style/Kinnect.Text.ChatNote" />
+</LinearLayout>

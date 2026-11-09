@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One message in Chat (21). ChatActivity shows only the parts each message needs:
+       - tv_day: centred time separator ("TODAY 4:49 PM") when a new part of the chat starts
+       - tv_system: grey centred line ("Aisha took a screenshot")
+       - tv_reply_label + tv_quote: "You replied to Aisha" and the quoted message behind the bubble
+       - fl_avatar: the sender's small avatar, beside the LAST bubble of their group only
+       - the content: a photo (fl_image), a shared post (ll_post) and / or text (tv_text)
+       - fl_reaction: the love heart on the bubble's bottom-left corner
+       - tv_meta: "Edited", "Sent";  v_seen: the tiny avatar when they've seen my last message
+     Sent messages sit on the right (gravity set in code), received ones on the left. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/tv_day"
+        style="@style/Kinnect.Text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="@dimen/chat_time_top"
+        android:layout_marginBottom="@dimen/chat_first_bubble_top"
+        android:fontFamily="@font/figtree_semibold"
+        android:includeFontPadding="false"
+        android:letterSpacing="0.08"
+        android:textColor="@color/text_grey"
+        android:textSize="@dimen/text_chat_time"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/tv_system"
+        style="@style/Kinnect.Text.Caption"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:gravity="center"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/tv_reply_label"
+        style="@style/Kinnect.Text.Caption"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/chat_quote_top"
+        android:includeFontPadding="false"
+        android:textSize="@dimen/text_small"
+        android:visibility="gone" />
+
+    <!-- Avatar + message. gravity bottom: the avatar lines up with the bubble's bottom. -->
+    <LinearLayout
+        android:id="@+id/ll_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="bottom"
+        android:orientation="horizontal">
+
+        <FrameLayout
+            android:id="@+id/fl_avatar"
+            android:layout_width="@dimen/avatar_26"
+            android:layout_height="@dimen/avatar_26"
+            android:layout_marginEnd="@dimen/chat_avatar_gap">
+
+            <TextView
+                android:id="@+id/tv_avatar"
+                style="@style/Kinnect.Avatar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:textSize="@dimen/text_avatar_26" />
+
+            <ImageView
+                android:id="@+id/iv_avatar_photo"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_avatar_circle"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <!-- Quote, content and heart overlap, so they share a FrameLayout -->
+        <FrameLayout
+            android:id="@+id/fl_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <!-- Quoted message: grey, one line, its tall bottom padding runs on behind the reply -->
+            <TextView
+                android:id="@+id/tv_quote"
+                style="@style/Kinnect.Text.Bubble"
+                android:background="@drawable/bg_bubble_received"
+                android:ellipsize="end"
+                android:maxWidth="@dimen/chat_post_card_width"
+                android:paddingTop="@dimen/chat_quote_pad_top"
+                android:paddingBottom="@dimen/chat_quote_pad_bottom"
+                android:singleLine="true"
+                android:textColor="@color/text_grey"
+                android:textSize="@dimen/text_chat_quote"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/ll_content"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Photo message: rounded frame, the photo is clipped to it in code -->
+                <FrameLayout
+                    android:id="@+id/fl_image"
+                    android:layout_width="@dimen/chat_photo_width"
+                    android:layout_height="@dimen/chat_photo_height"
+                    android:background="@drawable/bg_chat_photo"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:id="@+id/iv_image"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:contentDescription="@string/cd_photo"
+                        android:scaleType="centerCrop" />
+                </FrameLayout>
+
+                <!-- Shared post: first photo, author and the start of the text. Tap: open it. -->
+                <LinearLayout
+                    android:id="@+id/ll_post"
+                    android:layout_width="@dimen/chat_post_card_width"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_bubble_received"
+                    android:contentDescription="@string/cd_open_post"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:id="@+id/iv_post_image"
+                        android:layout_width="match_parent"
+                        android:layout_height="@dimen/chat_post_image_height"
+                        android:importantForAccessibility="no"
+                        android:scaleType="centerCrop"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/tv_post_author"
+                        style="@style/Kinnect.Text.Body.Bold"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/chat_post_card_padding"
+                        android:layout_marginTop="@dimen/chat_post_card_padding"
+                        android:layout_marginEnd="@dimen/chat_post_card_padding"
+                        android:ellipsize="end"
+                        android:singleLine="true" />
+
+                    <TextView
+                        android:id="@+id/tv_post_text"
+                        style="@style/Kinnect.Text.Caption"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="@dimen/chat_post_card_padding"
+                        android:ellipsize="end"
+                        android:maxLines="2" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_text"
+                    style="@style/Kinnect.Text.Bubble"
+                    android:maxWidth="@dimen/chat_bubble_max_width"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- Love heart in a white ring, centred on the bubble's bottom-left corner -->
+            <FrameLayout
+                android:id="@+id/fl_reaction"
+                android:layout_width="@dimen/chat_heart_frame"
+                android:layout_height="@dimen/chat_heart_frame"
+                android:layout_gravity="bottom|start"
+                android:background="@drawable/bg_avatar_circle"
+                android:contentDescription="@string/cd_loved_message"
+                android:elevation="@dimen/chat_heart_elevation"
+                android:padding="@dimen/chat_heart_ring"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/iv_reaction"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/reaction_love" />
+            </FrameLayout>
+        </FrameLayout>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_meta"
+        style="@style/Kinnect.Text.Caption"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/chat_meta_top"
+        android:includeFontPadding="false"
+        android:textSize="@dimen/text_small"
+        android:visibility="gone" />
+
+    <!-- Seen: a tiny disc in the other person's colour under my last message -->
+    <View
+        android:id="@+id/v_seen"
+        android:layout_width="@dimen/chat_seen_dot"
+        android:layout_height="@dimen/chat_seen_dot"
+        android:layout_gravity="end"
+        android:layout_marginTop="@dimen/chat_seen_top"
+        android:background="@drawable/bg_avatar_circle"
+        android:visibility="gone" />
+</LinearLayout>

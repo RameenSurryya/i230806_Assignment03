@@ -26,54 +26,77 @@
             android:contentDescription="@string/cd_back"
             android:src="@drawable/ic_back" />
 
-        <!-- Avatar + online dot overlapping its bottom-right edge -->
-        <FrameLayout
-            android:layout_width="@dimen/avatar_36"
-            android:layout_height="@dimen/avatar_36"
-            android:layout_marginStart="@dimen/chat_avatar_start">
-
-            <TextView
-                style="@style/Kinnect.Avatar"
-                android:backgroundTint="@color/avatar_ak"
-                android:text="@string/sample_initials_aisha" />
-
-            <View
-                style="@style/Kinnect.OnlineDot"
-                android:layout_width="@dimen/chat_online_dot"
-                android:layout_height="@dimen/chat_online_dot"
-                android:layout_marginEnd="0dp"
-                android:layout_marginBottom="0dp" />
-        </FrameLayout>
-
-        <!-- Name and status: takes the space left over, long names ellipsize -->
+        <!-- Avatar + online dot, then name and status. Tap: their profile. -->
         <LinearLayout
+            android:id="@+id/ll_header_person"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/chat_header_text_start"
+            android:layout_height="match_parent"
             android:layout_weight="1"
-            android:orientation="vertical">
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            <TextView
-                style="@style/Kinnect.Text"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:fontFamily="@font/bricolage_grotesque_bold"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text="@string/sample_name_aisha"
-                android:textSize="@dimen/text_chat_header_name" />
+            <FrameLayout
+                android:layout_width="@dimen/avatar_36"
+                android:layout_height="@dimen/avatar_36"
+                android:layout_marginStart="@dimen/chat_avatar_start">
 
-            <TextView
-                style="@style/Kinnect.Text"
-                android:layout_width="match_parent"
+                <TextView
+                    android:id="@+id/tv_header_avatar"
+                    style="@style/Kinnect.Avatar"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <ImageView
+                    android:id="@+id/iv_header_avatar_photo"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_avatar_circle"
+                    android:importantForAccessibility="no"
+                    android:scaleType="centerCrop"
+                    android:visibility="gone" />
+
+                <View
+                    android:id="@+id/v_header_online"
+                    style="@style/Kinnect.OnlineDot"
+                    android:layout_width="@dimen/chat_online_dot"
+                    android:layout_height="@dimen/chat_online_dot"
+                    android:layout_marginEnd="0dp"
+                    android:layout_marginBottom="0dp"
+                    android:visibility="gone" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/chat_status_top"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text="@string/chat_status"
-                android:textColor="@color/text_grey"
-                android:textSize="@dimen/text_chat_status" />
+                android:layout_marginStart="@dimen/chat_header_text_start"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_header_name"
+                    style="@style/Kinnect.Text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/bricolage_grotesque_bold"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textSize="@dimen/text_chat_header_name" />
+
+                <!-- "Active now" / "Active 5m ago"; hidden when unknown -->
+                <TextView
+                    android:id="@+id/tv_header_status"
+                    style="@style/Kinnect.Text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/chat_status_top"
+                    android:includeFontPadding="false"
+                    android:singleLine="true"
+                    android:textColor="@color/text_grey"
+                    android:textSize="@dimen/text_chat_status"
+                    android:visibility="gone" />
+            </LinearLayout>
         </LinearLayout>
 
         <ImageView
@@ -83,11 +106,13 @@
             android:src="@drawable/ic_phone" />
 
         <ImageView
+            android:id="@+id/iv_video"
             style="@style/Kinnect.ChatHeaderIcon"
             android:contentDescription="@string/cd_video_call"
             android:src="@drawable/ic_video" />
 
         <ImageView
+            android:id="@+id/iv_info"
             style="@style/Kinnect.ChatHeaderIcon"
             android:layout_marginEnd="@dimen/chat_header_end"
             android:contentDescription="@string/cd_chat_info"
@@ -96,254 +121,128 @@
 
     <View style="@style/Kinnect.Divider" />
 
-    <!-- ===== 2. Messages (scroll) ===== -->
-    <ScrollView
+    <!-- ===== 2. Messages: intro (item_chat_intro.xml) then one item_message.xml per message.
+         Starts at the bottom like every chat app (stackFromEnd in ChatActivity). ===== -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_messages"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:scrollbars="none">
+        android:clipToPadding="false"
+        android:paddingStart="@dimen/chat_margin_start"
+        android:paddingEnd="@dimen/chat_margin_end"
+        android:paddingBottom="@dimen/chat_typing_top"
+        android:scrollbars="none" />
+
+    <!-- "is typing": avatar + grey bubble with three dots, just above the input bar -->
+    <LinearLayout
+        android:id="@+id/ll_typing"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/chat_typing_top"
+        android:gravity="bottom"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/chat_margin_start"
+        android:visibility="gone">
+
+        <FrameLayout
+            android:layout_width="@dimen/avatar_26"
+            android:layout_height="@dimen/avatar_26">
+
+            <TextView
+                android:id="@+id/tv_typing_avatar"
+                style="@style/Kinnect.Avatar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:textSize="@dimen/text_avatar_26" />
+
+            <ImageView
+                android:id="@+id/iv_typing_avatar_photo"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_avatar_circle"
+                android:importantForAccessibility="no"
+                android:scaleType="centerCrop"
+                android:visibility="gone" />
+        </FrameLayout>
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:id="@+id/ll_typing_bubble"
+            android:layout_width="wrap_content"
+            android:layout_height="@dimen/chat_typing_height"
+            android:layout_marginStart="@dimen/chat_avatar_gap"
+            android:background="@drawable/bg_bubble_received"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="@dimen/chat_typing_pad"
+            android:paddingEnd="@dimen/chat_typing_pad">
+
+            <View
+                style="@style/Kinnect.TypingDot"
+                android:backgroundTint="@color/typing_dot_1" />
+
+            <View
+                style="@style/Kinnect.TypingDot"
+                android:layout_marginStart="@dimen/chat_typing_dot_gap"
+                android:backgroundTint="@color/typing_dot_2" />
+
+            <View
+                style="@style/Kinnect.TypingDot"
+                android:layout_marginStart="@dimen/chat_typing_dot_gap"
+                android:backgroundTint="@color/typing_dot_3" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- "Replying to Aisha" + the message being answered, with an X to cancel -->
+    <LinearLayout
+        android:id="@+id/ll_reply_bar"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/chat_reply_bar_height"
+        android:background="@color/chip_fill"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/screen_margin"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingStart="@dimen/chat_margin_start"
-            android:paddingEnd="@dimen/chat_margin_end"
-            android:paddingBottom="@dimen/chat_body_bottom">
-
-            <!-- Intro: big avatar, name, how you know each other -->
-            <TextView
-                style="@style/Kinnect.Avatar"
-                android:layout_width="@dimen/avatar_66"
-                android:layout_height="@dimen/avatar_66"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="@dimen/chat_intro_top"
-                android:backgroundTint="@color/avatar_ak"
-                android:text="@string/sample_initials_aisha"
-                android:textSize="@dimen/text_avatar_66" />
+            android:layout_weight="1"
+            android:orientation="vertical">
 
             <TextView
-                style="@style/Kinnect.Text.SectionTitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="@dimen/chat_intro_name_top"
-                android:includeFontPadding="false"
-                android:text="@string/sample_name_aisha" />
-
-            <TextView
-                style="@style/Kinnect.Text.Caption"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="@dimen/chat_intro_sub_top"
-                android:gravity="center"
-                android:includeFontPadding="false"
-                android:text="@string/chat_intro" />
-
-            <!-- Centred time separator -->
-            <TextView
+                android:id="@+id/tv_reply_to"
                 style="@style/Kinnect.Text"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="@dimen/chat_time_top"
                 android:fontFamily="@font/figtree_semibold"
                 android:includeFontPadding="false"
-                android:letterSpacing="0.08"
-                android:text="@string/chat_time_today"
-                android:textColor="@color/text_grey"
-                android:textSize="@dimen/text_chat_time" />
+                android:singleLine="true"
+                android:textSize="@dimen/text_chat_message" />
 
-            <!-- Aisha's group: avatar beside the LAST bubble (gravity bottom) -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/chat_first_bubble_top"
-                android:gravity="bottom"
-                android:orientation="horizontal">
-
-                <TextView
-                    style="@style/Kinnect.Avatar"
-                    android:layout_width="@dimen/avatar_26"
-                    android:layout_height="@dimen/avatar_26"
-                    android:backgroundTint="@color/avatar_ak"
-                    android:text="@string/sample_initials_aisha"
-                    android:textSize="@dimen/text_avatar_26" />
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="@dimen/chat_avatar_gap"
-                    android:orientation="vertical">
-
-                    <TextView
-                        style="@style/Kinnect.Text.Bubble"
-                        android:background="@drawable/bg_bubble_received_first"
-                        android:text="@string/chat_msg_saturday" />
-
-                    <TextView
-                        style="@style/Kinnect.Text.Bubble"
-                        android:layout_marginTop="@dimen/chat_bubble_gap"
-                        android:background="@drawable/bg_bubble_received_middle"
-                        android:text="@string/chat_msg_table" />
-
-                    <TextView
-                        style="@style/Kinnect.Text.Bubble"
-                        android:layout_marginTop="@dimen/chat_bubble_gap"
-                        android:background="@drawable/bg_bubble_received_last"
-                        android:text="@string/chat_msg_camera" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- My group: two teal bubbles on the right -->
             <TextView
-                style="@style/Kinnect.Text.Bubble.Sent"
-                android:layout_marginTop="@dimen/chat_group_gap"
-                android:background="@drawable/bg_bubble_sent_first"
-                android:text="@string/chat_msg_obviously" />
-
-            <!-- Second bubble with Aisha's love reaction on its bottom-left corner.
-                 The bubble keeps a 10dp margin (half the heart) on the left and bottom,
-                 so the heart, drawn last at bottom|start, is centred on that corner. -->
-            <FrameLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="end"
-                android:layout_marginTop="@dimen/chat_bubble_gap">
-
-                <TextView
-                    style="@style/Kinnect.Text.Bubble.Sent"
-                    android:layout_marginStart="@dimen/chat_heart_offset"
-                    android:layout_marginBottom="@dimen/chat_heart_offset"
-                    android:background="@drawable/bg_bubble_sent_last"
-                    android:text="@string/chat_msg_batteries" />
-
-                <FrameLayout
-                    android:layout_width="@dimen/chat_heart_frame"
-                    android:layout_height="@dimen/chat_heart_frame"
-                    android:layout_gravity="bottom|start"
-                    android:background="@drawable/bg_avatar_circle"
-                    android:contentDescription="@string/cd_loved"
-                    android:elevation="@dimen/chat_heart_elevation"
-                    android:padding="@dimen/chat_heart_ring">
-
-                    <ImageView
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:importantForAccessibility="no"
-                        android:src="@drawable/reaction_love" />
-                </FrameLayout>
-            </FrameLayout>
-
-            <!-- Reply: label, the quoted message, then my teal reply over its bottom -->
-            <TextView
+                android:id="@+id/tv_reply_text"
                 style="@style/Kinnect.Text.Caption"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="end"
-                android:layout_marginTop="@dimen/chat_replied_top"
-                android:includeFontPadding="false"
-                android:text="@string/chat_replied"
-                android:textSize="@dimen/text_small" />
-
-            <FrameLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="end"
-                android:layout_marginTop="@dimen/chat_quote_top">
-
-                <!-- Quoted bubble: tall bottom padding so it continues behind the reply -->
-                <TextView
-                    style="@style/Kinnect.Text.Bubble"
-                    android:layout_gravity="end"
-                    android:background="@drawable/bg_bubble_received"
-                    android:paddingTop="@dimen/chat_quote_pad_top"
-                    android:paddingBottom="@dimen/chat_quote_pad_bottom"
-                    android:text="@string/chat_msg_table"
-                    android:textColor="@color/text_grey"
-                    android:textSize="@dimen/text_chat_quote" />
-
-                <TextView
-                    style="@style/Kinnect.Text.Bubble.Sent"
-                    android:layout_marginTop="@dimen/chat_quote_visible"
-                    android:background="@drawable/bg_bubble_sent_middle"
-                    android:text="@string/chat_msg_perfect" />
-            </FrameLayout>
-
-            <!-- Photo message: rounded frame, the photo is clipped to it in ChatActivity -->
-            <FrameLayout
-                android:id="@+id/fl_photo"
-                android:layout_width="@dimen/chat_photo_width"
-                android:layout_height="@dimen/chat_photo_height"
-                android:layout_gravity="end"
-                android:layout_marginTop="@dimen/chat_photo_top"
-                android:background="@drawable/bg_chat_photo">
-
-                <ImageView
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:contentDescription="@string/cd_photo"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/ph_lilac" />
-            </FrameLayout>
-
-            <!-- Seen: a tiny Aisha disc under my last message -->
-            <View
-                android:layout_width="@dimen/chat_seen_dot"
-                android:layout_height="@dimen/chat_seen_dot"
-                android:layout_gravity="end"
-                android:layout_marginTop="@dimen/chat_seen_top"
-                android:background="@drawable/bg_avatar_circle"
-                android:backgroundTint="@color/avatar_ak"
-                android:contentDescription="@string/cd_seen_aisha" />
-
-            <!-- Aisha is typing: avatar + grey bubble with three dots -->
-            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/chat_typing_top"
-                android:gravity="bottom"
-                android:orientation="horizontal">
-
-                <TextView
-                    style="@style/Kinnect.Avatar"
-                    android:layout_width="@dimen/avatar_26"
-                    android:layout_height="@dimen/avatar_26"
-                    android:backgroundTint="@color/avatar_ak"
-                    android:text="@string/sample_initials_aisha"
-                    android:textSize="@dimen/text_avatar_26" />
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="@dimen/chat_typing_height"
-                    android:layout_marginStart="@dimen/chat_avatar_gap"
-                    android:background="@drawable/bg_bubble_received"
-                    android:contentDescription="@string/cd_typing"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="@dimen/chat_typing_pad"
-                    android:paddingEnd="@dimen/chat_typing_pad">
-
-                    <View
-                        style="@style/Kinnect.TypingDot"
-                        android:backgroundTint="@color/typing_dot_1" />
-
-                    <View
-                        style="@style/Kinnect.TypingDot"
-                        android:layout_marginStart="@dimen/chat_typing_dot_gap"
-                        android:backgroundTint="@color/typing_dot_2" />
-
-                    <View
-                        style="@style/Kinnect.TypingDot"
-                        android:layout_marginStart="@dimen/chat_typing_dot_gap"
-                        android:backgroundTint="@color/typing_dot_3" />
-                </LinearLayout>
-            </LinearLayout>
+                android:layout_marginTop="@dimen/chat_status_top"
+                android:ellipsize="end"
+                android:includeFontPadding="false"
+                android:singleLine="true" />
         </LinearLayout>
-    </ScrollView>
 
-    <!-- ===== 3. Pinned input bar (visual only) ===== -->
+        <ImageView
+            android:id="@+id/iv_cancel_reply"
+            android:layout_width="@dimen/touch_target"
+            android:layout_height="@dimen/touch_target"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/cd_cancel_reply_chat"
+            android:padding="@dimen/chat_header_icon_pad_v"
+            android:src="@drawable/ic_close"
+            app:tint="@color/text_grey" />
+    </LinearLayout>
+
+    <!-- ===== 3. Pinned input bar ===== -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -354,6 +253,7 @@
         android:paddingEnd="@dimen/chat_bar_end"
         android:paddingBottom="@dimen/chat_bar_bottom">
 
+        <!-- Plus and mic: visual only -->
         <ImageView
             style="@style/Kinnect.ChatBarIcon"
             android:contentDescription="@string/cd_more_actions"
@@ -363,12 +263,16 @@
             android:paddingBottom="@dimen/chat_bar_plus_pad_v"
             android:src="@drawable/ic_plus_circle" />
 
+        <!-- Camera: take a photo and send it -->
         <ImageView
+            android:id="@+id/iv_camera"
             style="@style/Kinnect.ChatBarIcon"
             android:contentDescription="@string/cd_camera"
             android:src="@drawable/ic_camera" />
 
+        <!-- Gallery: pick a photo and send it -->
         <ImageView
+            android:id="@+id/iv_gallery"
             style="@style/Kinnect.ChatBarIcon"
             android:contentDescription="@string/cd_gallery"
             android:src="@drawable/ic_image" />
@@ -390,15 +294,19 @@
             android:paddingStart="@dimen/input_padding"
             android:paddingEnd="@dimen/chat_field_icon_end">
 
-            <TextView
+            <EditText
+                android:id="@+id/et_message"
                 style="@style/Kinnect.Text"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
+                android:background="@null"
+                android:hint="@string/chat_hint"
+                android:importantForAutofill="no"
                 android:includeFontPadding="false"
-                android:singleLine="true"
-                android:text="@string/chat_hint"
-                android:textColor="@color/text_hint"
+                android:inputType="textCapSentences|textMultiLine"
+                android:maxLines="3"
+                android:textColorHint="@color/text_hint"
                 android:textSize="@dimen/text_name" />
 
             <ImageView
@@ -409,7 +317,9 @@
                 app:tint="@color/teal" />
         </LinearLayout>
 
+        <!-- Thumbs-up (sends a like) while the field is empty, paper plane (send) after typing -->
         <ImageView
+            android:id="@+id/iv_send"
             style="@style/Kinnect.ChatBarIcon"
             android:layout_width="@dimen/chat_like_width"
             android:contentDescription="@string/cd_send_like"

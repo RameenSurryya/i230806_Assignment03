@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 7a: sizes added for Chats (20) and Chat (21). -->
+<resources>
+    <dimen name="chat_meta_indent">33dp</dimen>         <!-- 26dp avatar + 7dp gap: "Edited" under a received bubble -->
+    <dimen name="chat_meta_top">3dp</dimen>
+    <dimen name="chat_post_card_width">220dp</dimen>    <!-- shared post card -->
+    <dimen name="chat_post_image_height">120dp</dimen>
+    <dimen name="chat_post_card_padding">10dp</dimen>
+    <dimen name="chat_reply_bar_height">52dp</dimen>    <!-- "Replying to ..." above the input -->
+    <dimen name="chat_bubble_max_width">260dp</dimen>   <!-- long messages wrap instead of filling the row -->
+    <dimen name="chats_empty_margin">32dp</dimen>
+</resources>

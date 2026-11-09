@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 7b: texts for push notifications (KinnectMessagingService). -->
+<resources>
+    <string name="notif_call_voice">Incoming voice call</string>
+    <string name="notif_call_video">Incoming video call</string>
+    <string name="notif_call_tap">Tap to answer</string>
+</resources>

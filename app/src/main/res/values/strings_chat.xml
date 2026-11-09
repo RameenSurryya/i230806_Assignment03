@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Step 7a: texts for Chats (20) and Chat (21). -->
+<resources>
+
+    <!-- Chats (20) -->
+    <string name="chats_empty">No chats yet. Open a friend\'s profile and tap Message to start one.</string>
+    <string name="chats_no_results">No chats match your search.</string>
+    <string name="chats_you_prefix">You: %1$s</string>
+    <string name="chats_time_sep">" · %1$s"</string>
+    <string name="cd_open_chat">Chat with %1$s</string>
+
+    <!-- Chat header and intro (21) -->
+    <string name="chat_active_ago">Active %1$s ago</string>
+    <string name="chat_active_just_now">Active just now</string>
+    <string name="chat_intro_friends">You\'re friends on Kinnect</string>
+    <string name="chat_intro_not_friends">You\'re not friends on Kinnect</string>
+    <string name="chat_intro_city">%1$s · Lives in %2$s</string>
+
+    <!-- Messages -->
+    <string name="chat_replied_you">You replied to %1$s</string>
+    <string name="chat_replied_to_you">%1$s replied to you</string>
+    <string name="chat_replied_self">You replied to yourself</string>
+    <string name="chat_replied_them">%1$s replied to themselves</string>
+    <string name="chat_edited">Edited</string>
+    <string name="chat_sent">Sent</string>
+    <string name="chat_post_unavailable">This post is no longer available</string>
+    <string name="chat_like_text">👍</string>
+    <string name="cd_seen_by">Seen by %1$s</string>
+    <string name="cd_loved_message">Loved</string>
+    <string name="cd_is_typing">%1$s is typing</string>
+    <string name="cd_open_post">Open the shared post</string>
+
+    <!-- Long-press menu -->
+    <string name="chat_menu_reply">Reply</string>
+    <string name="chat_menu_love">Love</string>
+    <string name="chat_menu_unlove">Remove love</string>
+    <string name="chat_menu_edit">Edit</string>
+    <string name="chat_menu_delete">Delete for everyone</string>
+    <string name="chat_too_late">Messages can only be changed for 5 minutes after sending.</string>
+    <string name="chat_edit_title">Edit message</string>
+    <string name="chat_edit_save">Save</string>
+    <string name="chat_edit_cancel">Cancel</string>
+
+    <!-- Reply bar above the input -->
+    <string name="chat_replying_to">Replying to %1$s</string>
+    <string name="chat_replying_to_self">Replying to yourself</string>
+    <string name="cd_cancel_reply_chat">Cancel reply</string>
+
+    <!-- Photos and screenshots -->
+    <string name="chat_sending_photo">Sending photo…</string>
+    <string name="chat_photo_error">Couldn\'t send the photo. Try again.</string>
+    <string name="chat_screenshot">%1$s took a screenshot</string>
+    <string name="chat_screenshot_toast">%1$s will see that you took a screenshot.</string>
+</resources>
