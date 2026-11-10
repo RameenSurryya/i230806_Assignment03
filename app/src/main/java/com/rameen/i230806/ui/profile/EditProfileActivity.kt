@@ -1,4 +1,4 @@
-package com.rameen.i230806.ui.profile
+﻿package com.rameen.i230806.ui.profile
 
 import android.content.Intent
 import android.os.Bundle
@@ -265,7 +265,7 @@ class EditProfileActivity : BaseActivity() {
             onDone(true)
             return
         }
-        Db.usernames().child(username).runTransaction(object : Transaction.Handler {
+        Db.usernames().child(username.replace('.', ',')).runTransaction(object : Transaction.Handler {
             override fun doTransaction(current: MutableData): Transaction.Result {
                 val owner = current.getValue(String::class.java)
                 if (owner != null && owner != myUid) return Transaction.abort()   // taken
@@ -274,7 +274,7 @@ class EditProfileActivity : BaseActivity() {
             }
 
             override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
-                if (committed && oldUsername.isNotEmpty()) Db.usernames().child(oldUsername).removeValue()
+                if (committed && oldUsername.isNotEmpty()) Db.usernames().child(oldUsername.replace('.', ',')).removeValue()
                 onDone(committed)
             }
         })
