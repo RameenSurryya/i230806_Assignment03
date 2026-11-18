@@ -5,6 +5,8 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.widget.ImageView
@@ -21,6 +23,7 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.Query
 import com.google.firebase.database.ValueEventListener
 import com.rameen.i230806.R
+import com.rameen.i230806.data.Api
 import com.rameen.i230806.data.Db
 import com.rameen.i230806.ui.chat.ChatsActivity
 import com.rameen.i230806.ui.home.HomeActivity
@@ -40,8 +43,9 @@ import com.rameen.i230806.ui.social.NotificationsActivity
  *     the others with FLAG_ACTIVITY_REORDER_TO_FRONT, so tab screens never pile up.
  *  3. The top bar (layout/include_top_bar.xml): page title (or the wordmark on Home via
  *     setupHomeTopBar()), search and messenger.
- *  4. Live badges: the red number on messenger (chats with unread messages) and on the bell
- *     (unread notifications), read from the database.
+ *  4. Badges: the red number on messenger (chats with unread messages) and on the bell
+ *     (unread notifications), asked from our server (badges.php) when the screen shows and
+ *     every 20 seconds while it stays visible.
  *  5. watch(): listens to a database path only while the screen is visible.
  *  6. Small helpers: back arrows, opening screens, toasts.
  *
@@ -158,26 +162,34 @@ abstract class BaseActivity : AppCompatActivity() {
     // 4. Live badges
     // ---------------------------------------------------------------------------------------
 
-    /** Messenger badge = number of conversations that have unread messages. */
-    private fun watchMessengerBadge() {
-        val badge = findViewById<TextView>(R.id.tv_messenger_badge) ?: return
-        showBadge(badge, 0)
-        if (myUid.isEmpty()) return
-        watch(Db.userChats(myUid)) { snapshot ->
-            val unreadChats = snapshot.children.count {
-                (it.child("unread").getValue(Long::class.java) ?: 0L) > 0
-            }
-            showBadge(badge, unreadChats)
+    private var messengerBadge: TextView? = null
+    private var notificationBadge: TextView? = null
+    private val badgeHandler = Handler(Looper.getMainLooper())
+    private val badgeTick = object : Runnable {
+        override fun run() {
+            refreshBadges()
+            badgeHandler.postDelayed(this, BADGE_REFRESH_MS)
         }
     }
 
-    /** Bell badge = number of notifications not opened yet (read == false). */
+    /** Messenger badge = number of conversations that have unread messages. */
+    private fun watchMessengerBadge() {
+        messengerBadge = findViewById<TextView>(R.id.tv_messenger_badge)?.also { showBadge(it, 0) }
+    }
+
+    /** Bell badge = number of notifications not opened yet. */
     private fun watchNotificationBadge() {
-        val badge = findViewById<TextView>(R.id.tv_tab_notifications_badge) ?: return
-        showBadge(badge, 0)
-        if (myUid.isEmpty()) return
-        watch(Db.notifications(myUid).orderByChild("read").equalTo(false)) { snapshot ->
-            showBadge(badge, snapshot.childrenCount.toInt())
+        notificationBadge = findViewById<TextView>(R.id.tv_tab_notifications_badge)?.also { showBadge(it, 0) }
+    }
+
+    /** Asks badges.php for both numbers. Notifications calls it after marking everything read. */
+    protected fun refreshBadges() {
+        if (myUid.isEmpty() || (messengerBadge == null && notificationBadge == null)) return
+        Api.get("badges.php") { result ->
+            val json = result.json ?: return@get
+            if (!result.ok || isDestroyed) return@get
+            messengerBadge?.let { showBadge(it, json.optInt("chats")) }
+            notificationBadge?.let { showBadge(it, json.optInt("notifications")) }
         }
     }
 
@@ -228,10 +240,12 @@ abstract class BaseActivity : AppCompatActivity() {
         super.onStart()
         isVisibleNow = true
         watches.forEach { it.query.addValueEventListener(it.listener) }
+        badgeHandler.post(badgeTick)
     }
 
     override fun onStop() {
         watches.forEach { it.query.removeEventListener(it.listener) }
+        badgeHandler.removeCallbacks(badgeTick)
         isVisibleNow = false
         super.onStop()
     }
@@ -266,5 +280,6 @@ abstract class BaseActivity : AppCompatActivity() {
 
     private companion object {
         const val TAG = "Kinnect"
+        const val BADGE_REFRESH_MS = 20_000L
     }
 }

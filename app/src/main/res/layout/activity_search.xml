@@ -77,8 +77,8 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- ===== Filter chips: "All" selected (visual only: Search finds people). The row scrolls
-         sideways; Marketplace runs off the edge. ===== -->
+    <!-- ===== Filter chips (Assignment 3): Everyone / Friends / Requests filter the people found;
+         Groups and Marketplace are visual only. The row scrolls sideways. ===== -->
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -94,21 +94,24 @@
             android:paddingEnd="@dimen/screen_margin">
 
             <TextView
+                android:id="@+id/tv_filter_everyone"
                 style="@style/Kinnect.Chip.Selected"
                 android:layout_height="@dimen/chip_height_small"
-                android:text="@string/search_all" />
+                android:text="@string/search_filter_everyone" />
 
             <TextView
+                android:id="@+id/tv_filter_friends"
                 style="@style/Kinnect.Chip"
                 android:layout_height="@dimen/chip_height_small"
                 android:layout_marginStart="@dimen/chip_gap"
-                android:text="@string/search_people" />
+                android:text="@string/search_filter_friends" />
 
             <TextView
+                android:id="@+id/tv_filter_requests"
                 style="@style/Kinnect.Chip"
                 android:layout_height="@dimen/chip_height_small"
                 android:layout_marginStart="@dimen/chip_gap"
-                android:text="@string/search_posts" />
+                android:text="@string/search_filter_requests" />
 
             <TextView
                 style="@style/Kinnect.Chip"

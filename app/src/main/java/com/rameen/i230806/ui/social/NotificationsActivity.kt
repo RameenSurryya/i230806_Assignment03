@@ -12,12 +12,15 @@ import androidx.core.text.HtmlCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.rameen.i230806.R
+import com.rameen.i230806.data.Api
 import com.rameen.i230806.data.AppNotification
-import com.rameen.i230806.data.Db
+import com.rameen.i230806.data.Cached
 import com.rameen.i230806.data.Extra
 import com.rameen.i230806.data.FriendRepo
+import com.rameen.i230806.data.Json
 import com.rameen.i230806.data.NotifType
 import com.rameen.i230806.data.Reaction
+import com.rameen.i230806.data.User
 import com.rameen.i230806.databinding.ActivityNotificationsBinding
 import com.rameen.i230806.databinding.ItemNotificationBinding
 import com.rameen.i230806.ui.BaseActivity
@@ -26,16 +29,18 @@ import com.rameen.i230806.ui.home.YourStoryActivity
 import com.rameen.i230806.ui.profile.openProfile
 import com.rameen.i230806.util.Avatars
 import com.rameen.i230806.util.Times
+import org.json.JSONObject
 
 /**
- * 18 Notifications, live from notifications/{my uid}.
+ * 18 Notifications, from our server (notifications/list.php, Assignment 3).
  *
- * Other screens add rows with Db.notify(...) (friend requests now; reactions, comments and
- * story reactions in steps 5 and 6). This screen shows the newest 30:
+ * The server adds the rows itself when something happens (friend requests and accepted
+ * requests now; reactions, comments and story reactions in steps 5 and 6). This screen loads
+ * the newest 30 every time it shows (Cached: the saved copy first, so it also works offline):
  *  - New: not read yet, on the light teal band, time in bold teal.
  *  - Earlier: already seen.
- * When you leave the screen they are all marked read = true, which also clears the red
- * number on the bell tab (BaseActivity counts read == false).
+ * When you leave the screen they are all marked read (notifications/read.php), which also
+ * clears the red number on the bell tab (badges.php).
  *
  * Tapping a row: friend rows open that person's profile, post rows open the comments of that
  * post, story rows open your story. A friend request that is still waiting has Confirm /
@@ -45,16 +50,15 @@ class NotificationsActivity : BaseActivity() {
 
     private lateinit var binding: ActivityNotificationsBinding
 
-    private val newRows = mutableListOf<AppNotification>()
-    private val earlierRows = mutableListOf<AppNotification>()
+    /** One row: the notification, who did it, and whether their friend request still waits. */
+    private data class Row(val item: AppNotification, val from: User?, var waiting: Boolean)
+
+    private val newRows = mutableListOf<Row>()
+    private val earlierRows = mutableListOf<Row>()
     private val newAdapter = NotifAdapter(newRows, isNew = true)
     private val earlierAdapter = NotifAdapter(earlierRows, isNew = false)
 
-    /** People whose friend request to me is still waiting (for Confirm / Delete). */
-    private var waitingRequests: Set<String> = emptySet()
-
     private var limit = PAGE_SIZE
-    private var listWatch: Watch? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,30 +74,26 @@ class NotificationsActivity : BaseActivity() {
             list.adapter = adapter
         }
 
-        watch(Db.friendRequests(myUid)) { snapshot ->
-            waitingRequests = snapshot.children.mapNotNull { it.key }.toSet()
-            newAdapter.notifyDataSetChanged()
-            earlierAdapter.notifyDataSetChanged()
-        }
-        watchList()
-
         binding.btnSeePrevious.setOnClickListener {
             limit += PAGE_SIZE
-            watchList()
+            load()
         }
     }
 
-    /** (Re)starts listening to the newest [limit] notifications. */
-    private fun watchList() {
-        listWatch?.let { stopWatching(it) }
-        listWatch = watch(Db.notifications(myUid).orderByChild("timestamp").limitToLast(limit)) { snapshot ->
-            val all = snapshot.children
-                .mapNotNull { it.getValue(AppNotification::class.java)?.apply { id = it.key ?: id } }
-                .sortedByDescending { it.timestamp }
+    override fun onStart() {
+        super.onStart()
+        load()
+    }
+
+    /** The newest [limit] notifications, split into New and Earlier. */
+    private fun load() {
+        Cached.get("notifications/list.php", mapOf("limit" to limit)) { json ->
+            if (isDestroyed) return@get
+            val all = Json.objects(json.optJSONArray("notifications")).map { rowOf(it) }
             newRows.clear()
-            newRows.addAll(all.filter { !it.read })
+            newRows.addAll(all.filter { !it.item.read })
             earlierRows.clear()
-            earlierRows.addAll(all.filter { it.read })
+            earlierRows.addAll(all.filter { it.item.read })
             newAdapter.notifyDataSetChanged()
             earlierAdapter.notifyDataSetChanged()
 
@@ -107,14 +107,29 @@ class NotificationsActivity : BaseActivity() {
         }
     }
 
+    /** One notification from the server's JSON. */
+    private fun rowOf(json: JSONObject): Row {
+        val item = AppNotification(
+            id = json.optLong("id").toString(),
+            type = Json.str(json, "type"),
+            fromUid = json.optLong("from_id").toString(),
+            postId = if (json.isNull("post_id")) "" else json.optLong("post_id").toString(),
+            text = Json.str(json, "text"),
+            timestamp = json.optLong("created_at"),
+            read = json.optBoolean("read"),
+        )
+        val from = json.optJSONObject("from")?.let { Json.user(it) }
+        return Row(item, from, json.optBoolean("waiting"))
+    }
+
     private fun setVisible(view: View, visible: Boolean) {
         view.visibility = if (visible) View.VISIBLE else View.GONE
     }
 
-    /** Leaving the screen: everything shown has now been seen. One write for all of them. */
+    /** Leaving the screen: everything shown has now been seen. One request for all of them. */
     override fun onStop() {
         if (newRows.isNotEmpty()) {
-            Db.notifications(myUid).updateChildren(newRows.associate { "${it.id}/read" to true })
+            Api.post("notifications/read.php", JSONObject()) { refreshBadges() }
         }
         super.onStop()
     }
@@ -171,11 +186,26 @@ class NotificationsActivity : BaseActivity() {
         val popup = PopupMenu(this, anchor)
         popup.menu.add(R.string.notif_remove)
         popup.setOnMenuItemClickListener {
-            Db.notifications(myUid).child(item.id).removeValue()
-            toast(R.string.notif_removed)
+            Api.post("notifications/delete.php", JSONObject().put("id", item.id.toLong())) { result ->
+                if (isDestroyed) return@post
+                if (result.ok) {
+                    toast(R.string.notif_removed)
+                    load()
+                } else {
+                    toast(result.error ?: getString(R.string.error_generic))
+                }
+            }
             true
         }
         popup.show()
+    }
+
+    /** Confirm / Delete: the buttons go away at once; the action is sent (or queued offline). */
+    private fun answerRequest(entry: Row, action: String) {
+        entry.waiting = false
+        newAdapter.notifyDataSetChanged()
+        earlierAdapter.notifyDataSetChanged()
+        FriendRepo.act(this, action, entry.item.fromUid)
     }
 
     // ---------------------------------------------------------------------------------------
@@ -185,7 +215,7 @@ class NotificationsActivity : BaseActivity() {
     private inner class NotifHolder(val row: ItemNotificationBinding) : RecyclerView.ViewHolder(row.root)
 
     private inner class NotifAdapter(
-        private val rows: List<AppNotification>,
+        private val rows: List<Row>,
         private val isNew: Boolean,
     ) : RecyclerView.Adapter<NotifHolder>() {
 
@@ -195,18 +225,13 @@ class NotificationsActivity : BaseActivity() {
             NotifHolder(ItemNotificationBinding.inflate(LayoutInflater.from(parent.context), parent, false))
 
         override fun onBindViewHolder(holder: NotifHolder, position: Int) {
-            val item = rows[position]
+            val entry = rows[position]
+            val item = entry.item
             val row = holder.row
-            row.root.tag = item.id
 
-            // Name and avatar of the person who did it.
-            row.tvText.text = textOf(item, getString(R.string.notif_someone))
-            Avatars.bind(row.tvAvatar, row.ivAvatarPhoto, null)
-            if (item.fromUid.isNotEmpty()) Db.getUser(item.fromUid) { user ->
-                if (row.root.tag != item.id) return@getUser
-                Avatars.bind(row.tvAvatar, row.ivAvatarPhoto, user)
-                if (user != null) row.tvText.text = textOf(item, user.name)
-            }
+            // Name and avatar of the person who did it (sent with the notification).
+            row.tvText.text = textOf(item, entry.from?.name ?: getString(R.string.notif_someone))
+            Avatars.bind(row.tvAvatar, row.ivAvatarPhoto, entry.from)
             showBadge(row, item)
 
             // Time: bold teal while new (Kinnect.Text.Caption.New), grey once seen.
@@ -219,14 +244,13 @@ class NotificationsActivity : BaseActivity() {
             )
 
             // Confirm / Delete only while their request is still waiting.
-            val waiting = item.type == NotifType.FRIEND_REQUEST && item.fromUid in waitingRequests
-            setVisible(row.llRequestButtons, waiting)
+            setVisible(row.llRequestButtons, entry.waiting)
             row.btnConfirm.setOnClickListener {
-                FriendRepo.accept(item.fromUid)
+                answerRequest(entry, FriendRepo.ACCEPT)
                 toast(R.string.friends_request_confirmed)
             }
             row.btnDelete.setOnClickListener {
-                FriendRepo.decline(item.fromUid)
+                answerRequest(entry, FriendRepo.DECLINE)
                 toast(R.string.request_deleted)
             }
 

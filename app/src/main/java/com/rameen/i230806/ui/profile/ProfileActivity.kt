@@ -7,7 +7,8 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.rameen.i230806.R
-import com.rameen.i230806.data.Db
+import com.rameen.i230806.data.Cached
+import com.rameen.i230806.data.Json
 import com.rameen.i230806.data.User
 import com.rameen.i230806.databinding.ActivityProfileBinding
 import com.rameen.i230806.ui.BaseActivity
@@ -18,11 +19,11 @@ import com.rameen.i230806.util.Images
 import com.rameen.i230806.util.Times
 
 /**
- * 15 Profile: your own profile, live from the database.
- *  - users/{my uid}: name, pictures, bio and the Details rows (each row hidden when empty).
- *  - friends/{my uid}: the friend count and the first three friends as tiles (tap: their profile).
- * Both are watched while the screen is visible, so returning from Edit profile shows the
- * changes straight away.
+ * 15 Profile: your own profile, from our server (users/profile.php, Assignment 3).
+ *  - user: name, pictures, bio and the Details rows (each row hidden when empty).
+ *  - friend_count and friends: the count and the first three friends as tiles (tap: their profile).
+ * Loaded every time the screen shows (Cached: the saved copy first, so it also works offline),
+ * so returning from Edit profile shows the changes straight away.
  *
  * Buttons: Edit profile and both camera badges open Edit profile; Add to story opens the camera;
  * the search icon and "Find friends" open Search. The pills and "..." are visual only.
@@ -44,17 +45,18 @@ class ProfileActivity : BaseActivity() {
         binding.llAddToStory.setOnClickListener { openScreen(CameraActivity::class.java) }
         binding.ivSearch.setOnClickListener { openScreen(SearchActivity::class.java) }
         binding.tvFindFriends.setOnClickListener { openScreen(SearchActivity::class.java) }
+    }
 
-        watch(Db.user(myUid)) { snapshot ->
-            snapshot.getValue(User::class.java)?.let { showUser(it) }
-        }
-        watch(Db.friends(myUid)) { snapshot ->
-            showFriends(snapshot.children.mapNotNull { it.key })
+    override fun onStart() {
+        super.onStart()
+        Cached.get("users/profile.php") { json ->
+            if (isDestroyed) return@get
+            showUser(Json.saveUser(json.getJSONObject("user")))
+            showFriends(json.optInt("friend_count"), Json.objects(json.optJSONArray("friends")).map { Json.user(it) })
         }
     }
 
     private fun showUser(user: User) {
-        Db.remember(user)
         binding.tvTitle.text = user.name
         binding.tvName.text = user.name
         Avatars.bind(binding.tvAvatar, binding.ivAvatarPhoto, user)
@@ -76,12 +78,12 @@ class ProfileActivity : BaseActivity() {
     }
 
     /** The count, and tiles for the first three friends. */
-    private fun showFriends(friendUids: List<String>) {
-        binding.tvFriendCount.text = friendUids.size.toString()
+    private fun showFriends(count: Int, firstThree: List<User>) {
+        binding.tvFriendCount.text = count.toString()
         binding.tvFriendsTotal.text =
-            if (friendUids.isEmpty()) getString(R.string.profile_no_friends)
-            else getString(R.string.friends_count_format, friendUids.size)
-        binding.llFriendTiles.visibility = if (friendUids.isEmpty()) View.GONE else View.VISIBLE
+            if (count == 0) getString(R.string.profile_no_friends)
+            else getString(R.string.friends_count_format, count)
+        binding.llFriendTiles.visibility = if (count == 0) View.GONE else View.VISIBLE
 
         val tiles = listOf(
             Triple(binding.flFriend1, binding.tvFriend1, binding.ivFriend1),
@@ -89,12 +91,7 @@ class ProfileActivity : BaseActivity() {
             Triple(binding.flFriend3, binding.tvFriend3, binding.ivFriend3),
         )
         tiles.forEachIndexed { index, (frame, initials, photo) ->
-            val uid = friendUids.getOrNull(index)
-            if (uid == null) {
-                frame.visibility = View.INVISIBLE
-            } else {
-                Db.getUser(uid) { friend -> showTile(frame, initials, photo, friend) }
-            }
+            showTile(frame, initials, photo, firstThree.getOrNull(index))
         }
     }
 

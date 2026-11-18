@@ -35,9 +35,10 @@ object LocalDb {
     const val MESSAGES = "messages"
     const val NOTIFICATIONS = "notifications"
     const val PENDING = "pending_actions"
+    const val CACHE = "api_cache"       // Assignment 3, step 4: whole server answers by request
 
     private const val NAME = "kinnect.db"
-    private const val VERSION = 1
+    private const val VERSION = 2       // 2: api_cache added
 
     private lateinit var helper: Helper
     private val db: SQLiteDatabase get() = helper.writableDatabase
@@ -71,6 +72,9 @@ object LocalDb {
                     "json TEXT NOT NULL, pending INTEGER NOT NULL DEFAULT 0)"
             )
             db.execSQL("CREATE TABLE $NOTIFICATIONS (id TEXT PRIMARY KEY, created_at INTEGER, json TEXT NOT NULL)")
+            // The last answer of each screen's request ("friends/lists.php", "users/profile.php?id=7"),
+            // shown at once next time and when offline (see Cached.kt).
+            db.execSQL("CREATE TABLE $CACHE (name TEXT PRIMARY KEY, json TEXT NOT NULL)")
             // The offline queue. uuid = the X-Request-Id the server uses to ignore repeats.
             db.execSQL(
                 "CREATE TABLE $PENDING (" +
@@ -92,7 +96,7 @@ object LocalDb {
 
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
             // It's only a cache: start again (the queue is sent before the app updates).
-            for (table in listOf(USERS, FRIENDS, POSTS, COMMENTS, STORIES, CHATS, MESSAGES, NOTIFICATIONS, PENDING)) {
+            for (table in listOf(USERS, FRIENDS, POSTS, COMMENTS, STORIES, CHATS, MESSAGES, NOTIFICATIONS, PENDING, CACHE)) {
                 db.execSQL("DROP TABLE IF EXISTS $table")
             }
             onCreate(db)
@@ -163,7 +167,7 @@ object LocalDb {
 
     /** Log out: nothing of this account stays on the phone. */
     fun clearAll() {
-        for (table in listOf(USERS, FRIENDS, POSTS, COMMENTS, STORIES, CHATS, MESSAGES, NOTIFICATIONS, PENDING)) {
+        for (table in listOf(USERS, FRIENDS, POSTS, COMMENTS, STORIES, CHATS, MESSAGES, NOTIFICATIONS, PENDING, CACHE)) {
             db.delete(table, null, null)
         }
     }

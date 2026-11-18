@@ -10,14 +10,15 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.ValueEventListener
 import com.rameen.i230806.R
-import com.rameen.i230806.data.Db
+import com.rameen.i230806.data.Api
 import com.rameen.i230806.data.FriendRepo
+import com.rameen.i230806.data.Json
+import com.rameen.i230806.data.LocalDb
 import com.rameen.i230806.data.User
 import com.rameen.i230806.databinding.ActivitySearchBinding
 import com.rameen.i230806.databinding.ItemRecentSearchBinding
@@ -25,35 +26,36 @@ import com.rameen.i230806.databinding.ItemSearchPersonBinding
 import com.rameen.i230806.ui.BaseActivity
 import com.rameen.i230806.ui.profile.openProfile
 import com.rameen.i230806.util.Avatars
-import java.util.Locale
 
 /**
- * 13 Search for people by name or username, as you type.
+ * 13 Search for people by name or username, as you type (Assignment 3: search.php).
  *
- * How the search works: Firebase can't do "contains", but it can do "starts with". Every user
- * has nameLower ("jacob west") and usernameLower ("jacob.west"), so typing "jac" asks for
- * values from "jac" up to "jac\uf8ff" (\uf8ff sorts after every normal letter). Both lists
- * are merged, so "west" finds nobody but "jacob" and "jacob.w" both find Jacob West.
+ * The server searches MySQL with LIKE '%text%', so any part of a name or username matches
+ * ("west" finds Jacob West). The three filter chips narrow it down:
+ *   Everyone  every user (the list stays empty until something is typed)
+ *   Friends   only my friends (all of them while the field is empty)
+ *   Requests  people with a friend request waiting either way (all of them while empty)
  * The search waits 300 ms after the last key press so it doesn't run for every letter.
+ * Offline, people already saved on this phone (SQLite) are searched instead.
  *
  * Each row shows the friendship state and, for strangers, an add-friend button.
  * Tapping a row opens the profile and saves the text in Recent searches (on this phone),
- * which are shown while the field is empty.
+ * which are shown while the field is empty on Everyone.
  */
 class SearchActivity : BaseActivity() {
 
+    /** One result: the person and how I'm related to them. */
+    private data class Person(val user: User, var status: FriendRepo.Status)
+
     private lateinit var binding: ActivitySearchBinding
 
-    private val people = mutableListOf<User>()
+    private val people = mutableListOf<Person>()
     private val adapter = PeopleAdapter()
 
-    // Friendship facts for the rows.
-    private var friendUids: Set<String> = emptySet()
-    private var askedMe: Set<String> = emptySet()
-    private val iAsked = mutableSetOf<String>()
+    private var filter = FILTER_EVERYONE
 
     private val handler = Handler(Looper.getMainLooper())
-    private val runSearch = Runnable { search(binding.etSearch.text.toString()) }
+    private val runSearch = Runnable { search() }
 
     /** Increases with every search, so answers to an older search are ignored. */
     private var searchNumber = 0
@@ -83,16 +85,12 @@ class SearchActivity : BaseActivity() {
         }
         binding.ivClear.setOnClickListener { binding.etSearch.setText("") }
 
-        watch(Db.friends(myUid)) { snapshot ->
-            friendUids = snapshot.children.mapNotNull { it.key }.toSet()
-            adapter.notifyDataSetChanged()
-        }
-        watch(Db.friendRequests(myUid)) { snapshot ->
-            askedMe = snapshot.children.mapNotNull { it.key }.toSet()
-            adapter.notifyDataSetChanged()
-        }
+        // Filter chips.
+        binding.tvFilterEveryone.setOnClickListener { setFilter(FILTER_EVERYONE) }
+        binding.tvFilterFriends.setOnClickListener { setFilter(FILTER_FRIENDS) }
+        binding.tvFilterRequests.setOnClickListener { setFilter(FILTER_REQUESTS) }
+        setFilter(FILTER_EVERYONE)
 
-        showRecent()
         binding.etSearch.requestFocus()
     }
 
@@ -102,13 +100,33 @@ class SearchActivity : BaseActivity() {
     }
 
     // ---------------------------------------------------------------------------------------
+    // Filter chips
+    // ---------------------------------------------------------------------------------------
+
+    private fun setFilter(newFilter: String) {
+        filter = newFilter
+        styleChip(binding.tvFilterEveryone, filter == FILTER_EVERYONE)
+        styleChip(binding.tvFilterFriends, filter == FILTER_FRIENDS)
+        styleChip(binding.tvFilterRequests, filter == FILTER_REQUESTS)
+        search()
+    }
+
+    /** Selected chip: light teal with teal text (Kinnect.Chip.Selected); others grey. */
+    private fun styleChip(chip: TextView, selected: Boolean) {
+        chip.setBackgroundResource(if (selected) R.drawable.bg_chip_selected else R.drawable.bg_chip)
+        chip.setTextColor(ContextCompat.getColor(this, if (selected) R.color.teal else R.color.text_dark))
+    }
+
+    // ---------------------------------------------------------------------------------------
     // Searching
     // ---------------------------------------------------------------------------------------
 
-    private fun search(typed: String) {
-        val text = typed.trim().lowercase(Locale.getDefault()).removePrefix("@")
+    private fun search() {
+        val text = binding.etSearch.text.toString().trim().removePrefix("@")
         val number = ++searchNumber
-        if (text.isEmpty()) {
+
+        // Nothing typed on Everyone: Recent searches instead of results.
+        if (text.isEmpty() && filter == FILTER_EVERYONE) {
             binding.llResults.visibility = View.GONE
             binding.svRecent.visibility = View.VISIBLE
             showRecent()
@@ -117,53 +135,48 @@ class SearchActivity : BaseActivity() {
         binding.llResults.visibility = View.VISIBLE
         binding.svRecent.visibility = View.GONE
 
-        // Two "starts with" queries; results are merged by uid (a LinkedHashMap keeps the order).
-        val found = LinkedHashMap<String, User>()
-        var answers = 0
-        val onAnswer = { snapshot: DataSnapshot? ->
-            snapshot?.children?.forEach { child ->
-                child.getValue(User::class.java)?.let { user ->
-                    if (user.uid.isNotEmpty() && user.uid != myUid) found[user.uid] = user
+        Api.get("search.php", mapOf("q" to text, "filter" to filter)) { result ->
+            if (number != searchNumber || isDestroyed) return@get   // an older search
+            val json = result.json
+            if (result.ok && json != null) {
+                val found = Json.objects(json.optJSONArray("users")).map { item ->
+                    Person(Json.saveUser(item), FriendRepo.statusOf(item.optString("status")))
                 }
+                showResults(text, found)
+            } else if (result.offline) {
+                toast(R.string.search_offline)
+                showResults(text, searchOnPhone(text))
+            } else {
+                toast(result.error ?: getString(R.string.error_generic))
             }
-            answers++
-            if (answers == 2 && number == searchNumber) showResults(text, found.values.toList())
-        }
-        for (field in listOf("nameLower", "usernameLower")) {
-            Db.users().orderByChild(field).startAt(text).endAt(text + "\uf8ff").limitToFirst(MAX_RESULTS)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) = onAnswer(snapshot)
-                    override fun onCancelled(error: DatabaseError) = onAnswer(null)
-                })
         }
     }
 
-    private fun showResults(text: String, results: List<User>) {
+    /** Offline: people saved in SQLite whose name or username contains [text]. */
+    private fun searchOnPhone(text: String): List<Person> {
+        if (filter != FILTER_EVERYONE) return emptyList()
+        val like = "%$text%"
+        return LocalDb.list(LocalDb.USERS, "(name LIKE ? OR username LIKE ?) AND id <> ?", arrayOf(like, like, myUid), "name", 30)
+            .map { Person(Json.user(it), FriendRepo.Status.NONE) }
+    }
+
+    private fun showResults(text: String, results: List<Person>) {
         people.clear()
-        people.addAll(results.sortedBy { it.nameLower })
+        people.addAll(results)
         adapter.notifyDataSetChanged()
         binding.tvNoResults.visibility = if (people.isEmpty()) View.VISIBLE else View.GONE
-        binding.tvNoResults.text = getString(R.string.search_no_results, text)
-
-        // Requests I already sent are stored under the other person, so check each result once.
-        for (user in results) {
-            Db.friendRequests(user.uid).child(myUid).addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists() && iAsked.add(user.uid)) adapter.notifyDataSetChanged()
-                }
-
-                override fun onCancelled(error: DatabaseError) {}
-            })
+        binding.tvNoResults.text = when {
+            filter == FILTER_REQUESTS && text.isEmpty() -> getString(R.string.search_no_requests)
+            filter == FILTER_FRIENDS -> getString(R.string.search_no_friends_match, text)
+            else -> getString(R.string.search_no_results, text)
         }
     }
 
-    private fun statusOf(uid: String) =
-        FriendRepo.statusOf(uid in friendUids, uid in iAsked, uid in askedMe)
-
     /** "Friend · Lives in Karachi", "@sara.iqbal · Lives in Lahore" ... */
-    private fun subtitleOf(user: User): String {
+    private fun subtitleOf(person: Person): String {
+        val user = person.user
         val parts = mutableListOf<String>()
-        when (statusOf(user.uid)) {
+        when (person.status) {
             FriendRepo.Status.FRIENDS -> parts.add(getString(R.string.search_friend))
             FriendRepo.Status.REQUEST_RECEIVED -> parts.add(getString(R.string.search_sent_you_request))
             FriendRepo.Status.REQUEST_SENT -> parts.add(getString(R.string.search_requested))
@@ -227,11 +240,12 @@ class SearchActivity : BaseActivity() {
             PersonHolder(ItemSearchPersonBinding.inflate(LayoutInflater.from(parent.context), parent, false))
 
         override fun onBindViewHolder(holder: PersonHolder, position: Int) {
-            val user = people[position]
+            val person = people[position]
+            val user = person.user
             val row = holder.row
             Avatars.bind(row.tvAvatar, row.ivAvatarPhoto, user)
             row.tvName.text = user.name
-            row.tvSubtitle.text = subtitleOf(user)
+            row.tvSubtitle.text = subtitleOf(person)
 
             row.root.setOnClickListener {
                 saveRecent(binding.etSearch.text.toString())
@@ -239,12 +253,11 @@ class SearchActivity : BaseActivity() {
             }
 
             // Add-friend circle only for people with no friendship or request yet.
-            val canAdd = statusOf(user.uid) == FriendRepo.Status.NONE
-            row.ivAdd.visibility = if (canAdd) View.VISIBLE else View.GONE
+            row.ivAdd.visibility = if (person.status == FriendRepo.Status.NONE) View.VISIBLE else View.GONE
             row.ivAdd.contentDescription = getString(R.string.cd_add_friend_name, user.name)
             row.ivAdd.setOnClickListener {
-                FriendRepo.sendRequest(user.uid)
-                iAsked.add(user.uid)
+                FriendRepo.act(this@SearchActivity, FriendRepo.REQUEST, user.uid)
+                person.status = FriendRepo.Status.REQUEST_SENT
                 toast(R.string.friend_request_sent)
                 notifyItemChanged(holder.bindingAdapterPosition)
             }
@@ -253,9 +266,13 @@ class SearchActivity : BaseActivity() {
 
     private companion object {
         const val TYPING_DELAY_MS = 300L
-        const val MAX_RESULTS = 20
         const val MAX_RECENT = 8
         const val PREFS = "recent_searches"
         const val KEY_RECENT = "list"
+
+        // The filter values search.php understands.
+        const val FILTER_EVERYONE = "everyone"
+        const val FILTER_FRIENDS = "friends"
+        const val FILTER_REQUESTS = "requests"
     }
 }

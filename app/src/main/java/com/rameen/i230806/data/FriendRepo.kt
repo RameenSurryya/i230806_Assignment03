@@ -1,79 +1,47 @@
 package com.rameen.i230806.data
 
+import android.content.Context
+import org.json.JSONObject
+
 /**
  * Everything about friendships, in one place (used by Other profile, Search, Friends and
- * Notifications). How it is stored (see Models.kt):
+ * Notifications). Assignment 3: every change is one call to friends/action.php on our server,
+ * which updates MySQL (friend_requests, friends both ways, close_friends) in one transaction
+ * and adds the Notifications row (friend request, request accepted).
  *
- *   friendRequests/{toUid}/{fromUid} = time sent     "fromUid asked toUid"
- *   friends/{uid}/{friendUid}        = time accepted  stored on BOTH people
- *   closeFriends/{uid}/{friendUid}   = true           only on the side that chose it
- *
- * Accepting writes several paths at once with updateChildren on the root: either all of them
- * are saved or none are, so two people can never end up "half friends".
+ * Actions go through the Outbox: offline they wait in the queue with their UUID and are sent
+ * in order when the internet is back; the server ignores a repeated UUID.
  */
 object FriendRepo {
 
     /** How the logged-in user is related to someone else. */
     enum class Status { NONE, REQUEST_SENT, REQUEST_RECEIVED, FRIENDS }
 
-    private val me: String get() = Db.uid ?: ""
+    // The actions friends/action.php understands.
+    const val REQUEST = "request"     // Add friend
+    const val CANCEL = "cancel"       // take back my request
+    const val ACCEPT = "accept"       // Confirm
+    const val DECLINE = "decline"     // Delete their request
+    const val UNFRIEND = "unfriend"
+    const val CLOSE = "close"         // add to close friends
+    const val UNCLOSE = "unclose"     // remove from close friends
 
-    /** "Add friend": asks [toUid] to be friends and adds a row to their Notifications. */
-    fun sendRequest(toUid: String) {
-        Db.friendRequests(toUid).child(me).setValue(Db.now())
-        Db.notify(toUid, NotifType.FRIEND_REQUEST)
-    }
-
-    /** Takes back a request I sent. */
-    fun cancelRequest(toUid: String) {
-        Db.friendRequests(toUid).child(me).removeValue()
-    }
-
-    /** "Confirm": [fromUid] asked me; we become friends on both sides and the request goes away. */
-    fun accept(fromUid: String) {
-        val now = Db.now()
-        Db.root.updateChildren(
-            mapOf(
-                "friends/$me/$fromUid" to now,
-                "friends/$fromUid/$me" to now,
-                "friendRequests/$me/$fromUid" to null,
-                "friendRequests/$fromUid/$me" to null,   // in case both asked each other
-            )
-        )
-        Db.notify(fromUid, NotifType.FRIEND_ACCEPTED)
-    }
-
-    /** "Delete": refuses a request [fromUid] sent me. They are not told. */
-    fun decline(fromUid: String) {
-        Db.friendRequests(me).child(fromUid).removeValue()
-    }
-
-    /** Ends the friendship on both sides, and removes them from my close friends. */
-    fun unfriend(uid: String) {
-        Db.root.updateChildren(
-            mapOf(
-                "friends/$me/$uid" to null,
-                "friends/$uid/$me" to null,
-                "closeFriends/$me/$uid" to null,
-                "closeFriends/$uid/$me" to null,
-            )
-        )
-    }
-
-    /** Close friends see the stories shared to "Close friends" (Story editor, step 6). */
-    fun setCloseFriend(uid: String, close: Boolean) {
-        val ref = Db.closeFriends(me).child(uid)
-        if (close) ref.setValue(true) else ref.removeValue()
+    /** The server's word for the relationship -> Status. */
+    fun statusOf(word: String): Status = when (word) {
+        "friends" -> Status.FRIENDS
+        "received" -> Status.REQUEST_RECEIVED
+        "sent" -> Status.REQUEST_SENT
+        else -> Status.NONE
     }
 
     /**
-     * Works out the status from the three facts the screen is watching:
-     * are we friends, did I ask them, did they ask me.
+     * Does [action] with the person [uid]. [onDone] gets the server's answer {status, close},
+     * or null when it was queued offline (the screen keeps its optimistic change).
      */
-    fun statusOf(areFriends: Boolean, iAsked: Boolean, theyAsked: Boolean): Status = when {
-        areFriends -> Status.FRIENDS
-        theyAsked -> Status.REQUEST_RECEIVED
-        iAsked -> Status.REQUEST_SENT
-        else -> Status.NONE
+    fun act(context: Context, action: String, uid: String, onDone: (JSONObject?) -> Unit = {}) {
+        val body = JSONObject().put("action", action).put("user_id", uid.toLong())
+        Outbox.send(context, "friend_$action", "friends/action.php", body) { result ->
+            onDone(if (result != null && result.ok) result.json else null)
+        }
     }
 }

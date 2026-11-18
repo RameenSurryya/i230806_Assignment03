@@ -7,13 +7,14 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.TextView
+import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
 import androidx.core.text.HtmlCompat
 import com.rameen.i230806.R
-import com.rameen.i230806.data.Db
+import com.rameen.i230806.data.Cached
 import com.rameen.i230806.data.Extra
 import com.rameen.i230806.data.FriendRepo
-import com.rameen.i230806.data.Post
+import com.rameen.i230806.data.Json
 import com.rameen.i230806.data.User
 import com.rameen.i230806.databinding.ActivityOtherProfileBinding
 import com.rameen.i230806.ui.BaseActivity
@@ -22,35 +23,31 @@ import com.rameen.i230806.ui.home.SearchActivity
 import com.rameen.i230806.util.Avatars
 import com.rameen.i230806.util.Images
 import com.rameen.i230806.util.Times
+import org.json.JSONObject
 
 /**
- * 17 Other profile: someone else's profile (their uid comes in Extra.UID).
+ * 17 Other profile: someone else's profile (their id comes in Extra.UID).
  *
- * Live data (watched while the screen is visible):
- *  - users/{uid}                    name, pictures, bio, details
- *  - friends/{uid} + friends/{me}   their friend count, and the mutual friends (in both lists)
- *  - friends/{me}/{uid}, friendRequests both ways, closeFriends/{me}/{uid}
- *                                   which friend button to show (FriendRepo.Status)
- *  - posts by this person           the three newest photos
+ * One request, users/profile.php?id=..., answers everything on the screen (Assignment 3):
+ *  - user                         name, pictures, bio, details
+ *  - friend_count, mutual_count   "1,204 friends · 38 mutual", and the first mutual friends
+ *  - status, close                which friend button to show (FriendRepo.Status)
+ *  - photos                       their three newest post pictures
+ * It is loaded every time the screen shows; the saved copy (Cached) shows first and offline.
  *
  * Friend button: Add friend -> Requested (tap again to cancel) -> they Confirm -> Friends.
  * If they asked me, it shows Confirm. "..." has Close friends, Unfriend and Delete request.
- * Message opens the chat with this person.
+ * A tap changes the button at once (also offline: the action waits in the queue), then the
+ * server's answer confirms it. Message opens the chat with this person.
  */
 class OtherProfileActivity : BaseActivity() {
 
     private lateinit var binding: ActivityOtherProfileBinding
     private lateinit var uid: String
 
-    // The facts the friend button depends on, each kept up to date by its own watch.
-    private var areFriends = false
-    private var iAsked = false
-    private var theyAsked = false
+    // What the friend button depends on (from the server, or changed by a tap).
+    private var status = FriendRepo.Status.NONE
     private var isCloseFriend = false
-    private val status get() = FriendRepo.statusOf(areFriends, iAsked, theyAsked)
-
-    private var theirFriends: Set<String> = emptySet()
-    private var myFriends: Set<String> = emptySet()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,44 +74,36 @@ class OtherProfileActivity : BaseActivity() {
         binding.ivPhoto2.clipToOutline = true
         binding.ivPhoto3.clipToOutline = true
 
-        watch(Db.user(uid)) { snapshot ->
-            snapshot.getValue(User::class.java)?.let { showUser(it) }
-        }
+        // Until the profile arrives: whatever we already know about this person.
+        Json.cachedUser(uid)?.let { showUser(it) }
+        showFriendButton()
+    }
 
-        // Friend lists: count and mutual friends.
-        watch(Db.friends(uid)) { snapshot ->
-            theirFriends = snapshot.children.mapNotNull { it.key }.toSet()
-            showCountsAndMutual()
-        }
-        watch(Db.friends(myUid)) { snapshot ->
-            myFriends = snapshot.children.mapNotNull { it.key }.toSet()
-            areFriends = uid in myFriends
-            showCountsAndMutual()
-            showFriendButton()
-        }
+    override fun onStart() {
+        super.onStart()
+        load()
+    }
 
-        // Requests both ways, and close friends.
-        watch(Db.friendRequests(uid).child(myUid)) { snapshot ->
-            iAsked = snapshot.exists()
-            showFriendButton()
+    /** Fills the whole screen from users/profile.php. */
+    private fun load() {
+        Cached.get("users/profile.php", mapOf("id" to uid)) { json ->
+            if (isDestroyed) return@get
+            showUser(Json.saveUser(json.getJSONObject("user")))
+            showCountsAndMutual(
+                json.optInt("friend_count"),
+                json.optInt("mutual_count"),
+                Json.objects(json.optJSONArray("mutual")).map { Json.user(it) },
+            )
+            showPhotos(Json.strings(json.optJSONArray("photos")))
+            showRelation(json)
         }
-        watch(Db.friendRequests(myUid).child(uid)) { snapshot ->
-            theyAsked = snapshot.exists()
-            showFriendButton()
-        }
-        watch(Db.closeFriends(myUid).child(uid)) { snapshot ->
-            isCloseFriend = snapshot.exists()
-            showFriendButton()
-        }
+    }
 
-        // Their posts, newest first: the first three pictures fill the Photos tiles.
-        watch(Db.posts().orderByChild("authorId").equalTo(uid)) { snapshot ->
-            val pictures = snapshot.children
-                .mapNotNull { it.getValue(Post::class.java) }
-                .sortedByDescending { it.timestamp }
-                .flatMap { it.imageIds }
-            showPhotos(pictures)
-        }
+    /** status + close from the server's answer. */
+    private fun showRelation(json: JSONObject) {
+        status = FriendRepo.statusOf(json.optString("status"))
+        isCloseFriend = json.optBoolean("close")
+        showFriendButton()
     }
 
     // ---------------------------------------------------------------------------------------
@@ -122,7 +111,6 @@ class OtherProfileActivity : BaseActivity() {
     // ---------------------------------------------------------------------------------------
 
     private fun showUser(user: User) {
-        Db.remember(user)
         binding.tvTitle.text = user.name
         binding.tvName.text = user.name
         Avatars.bind(binding.tvAvatar, binding.ivAvatarPhoto, user)
@@ -143,12 +131,11 @@ class OtherProfileActivity : BaseActivity() {
     }
 
     /** "1,204 friends · 38 mutual" and the "Friends with ..." row. */
-    private fun showCountsAndMutual() {
-        val mutual = theirFriends.intersect(myFriends).toList()
-        binding.tvCounts.text = html(getString(R.string.other_counts_format, theirFriends.size, mutual.size))
+    private fun showCountsAndMutual(friendCount: Int, mutualCount: Int, firstMutual: List<User>) {
+        binding.tvCounts.text = html(getString(R.string.other_counts_format, friendCount, mutualCount))
 
-        binding.llMutual.visibility = if (mutual.isEmpty()) View.GONE else View.VISIBLE
-        if (mutual.isEmpty()) return
+        binding.llMutual.visibility = if (mutualCount == 0) View.GONE else View.VISIBLE
+        if (mutualCount == 0 || firstMutual.isEmpty()) return
 
         val circles = listOf(
             binding.flMutual1 to binding.tvMutual1,
@@ -156,24 +143,21 @@ class OtherProfileActivity : BaseActivity() {
             binding.flMutual3 to binding.tvMutual3,
         )
         circles.forEachIndexed { index, (frame, initials) ->
-            frame.visibility = if (index < mutual.size) View.VISIBLE else View.GONE
-            if (index < mutual.size) Db.getUser(mutual[index]) { Avatars.bind(initials, null, it) }
+            val friend = firstMutual.getOrNull(index)
+            frame.visibility = if (friend != null) View.VISIBLE else View.GONE
+            if (friend != null) Avatars.bind(initials, null, friend)
         }
 
-        // Names of the first two mutual friends, then the text once both are loaded.
-        Db.getUser(mutual[0]) { first ->
-            val second = mutual.getOrNull(1)
-            if (second == null) {
-                binding.tvMutual.text = html(getString(R.string.mutual_one, safe(first)))
-            } else {
-                Db.getUser(second) { other ->
-                    binding.tvMutual.text = html(
-                        if (mutual.size == 2) getString(R.string.mutual_two, safe(first), safe(other))
-                        else getString(R.string.mutual_many, safe(first), safe(other), mutual.size - 2)
-                    )
-                }
+        // Names of the first two mutual friends.
+        val first = safe(firstMutual[0])
+        val second = firstMutual.getOrNull(1)
+        binding.tvMutual.text = html(
+            when {
+                second == null -> getString(R.string.mutual_one, first)
+                mutualCount == 2 -> getString(R.string.mutual_two, first, safe(second))
+                else -> getString(R.string.mutual_many, first, safe(second), mutualCount - 2)
             }
-        }
+        )
     }
 
     /** A name made safe to put inside HTML (a name like "<b>" stays plain text). */
@@ -182,14 +166,14 @@ class OtherProfileActivity : BaseActivity() {
     private fun html(text: String) = HtmlCompat.fromHtml(text, HtmlCompat.FROM_HTML_MODE_LEGACY)
 
     /** Up to three photos; the section is hidden when they haven't posted any. */
-    private fun showPhotos(mediaIds: List<String>) {
-        val visibility = if (mediaIds.isEmpty()) View.GONE else View.VISIBLE
+    private fun showPhotos(urls: List<String>) {
+        val visibility = if (urls.isEmpty()) View.GONE else View.VISIBLE
         binding.llPhotosTitle.visibility = visibility
         binding.llPhotos.visibility = visibility
         listOf(binding.ivPhoto1, binding.ivPhoto2, binding.ivPhoto3).forEachIndexed { index, tile ->
-            val mediaId = mediaIds.getOrNull(index)
-            tile.visibility = if (mediaId == null) View.INVISIBLE else View.VISIBLE
-            Images.load(tile, mediaId)
+            val url = urls.getOrNull(index)
+            tile.visibility = if (url == null) View.INVISIBLE else View.VISIBLE
+            Images.load(tile, url)
         }
     }
 
@@ -217,20 +201,30 @@ class OtherProfileActivity : BaseActivity() {
         binding.tvFriendLabel.setTextColor(textColor)
     }
 
+    /**
+     * Shows the expected result at once ([newStatus], [newClose]) and sends [action]. The
+     * server's answer then sets the real state, and the counts are reloaded.
+     */
+    private fun change(action: String, newStatus: FriendRepo.Status, newClose: Boolean, @StringRes message: Int) {
+        status = newStatus
+        isCloseFriend = newClose
+        showFriendButton()
+        toast(message)
+        FriendRepo.act(this, action, uid) { answer ->
+            if (answer == null || isDestroyed) return@act
+            showRelation(answer)
+            load()
+        }
+    }
+
     private fun onFriendButton() {
         when (status) {
-            FriendRepo.Status.NONE -> {
-                FriendRepo.sendRequest(uid)
-                toast(R.string.friend_request_sent)
-            }
-            FriendRepo.Status.REQUEST_SENT -> {
-                FriendRepo.cancelRequest(uid)
-                toast(R.string.friend_request_cancelled)
-            }
-            FriendRepo.Status.REQUEST_RECEIVED -> {
-                FriendRepo.accept(uid)
-                toast(R.string.friend_now_friends)
-            }
+            FriendRepo.Status.NONE ->
+                change(FriendRepo.REQUEST, FriendRepo.Status.REQUEST_SENT, false, R.string.friend_request_sent)
+            FriendRepo.Status.REQUEST_SENT ->
+                change(FriendRepo.CANCEL, FriendRepo.Status.NONE, false, R.string.friend_request_cancelled)
+            FriendRepo.Status.REQUEST_RECEIVED ->
+                change(FriendRepo.ACCEPT, FriendRepo.Status.FRIENDS, false, R.string.friend_now_friends)
             // Already friends: the same choices as "...".
             FriendRepo.Status.FRIENDS -> showMoreMenu(binding.llAddFriend)
         }
@@ -251,22 +245,15 @@ class OtherProfileActivity : BaseActivity() {
         }
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
-                MENU_CLOSE -> {
-                    FriendRepo.setCloseFriend(uid, !isCloseFriend)
-                    toast(if (isCloseFriend) R.string.close_friend_removed else R.string.close_friend_added)
-                }
-                MENU_UNFRIEND -> {
-                    FriendRepo.unfriend(uid)
-                    toast(R.string.unfriended)
-                }
-                MENU_DELETE_REQUEST -> {
-                    FriendRepo.decline(uid)
-                    toast(R.string.request_deleted)
-                }
-                MENU_CANCEL_REQUEST -> {
-                    FriendRepo.cancelRequest(uid)
-                    toast(R.string.friend_request_cancelled)
-                }
+                MENU_CLOSE ->
+                    if (isCloseFriend) change(FriendRepo.UNCLOSE, status, false, R.string.close_friend_removed)
+                    else change(FriendRepo.CLOSE, status, true, R.string.close_friend_added)
+                MENU_UNFRIEND ->
+                    change(FriendRepo.UNFRIEND, FriendRepo.Status.NONE, false, R.string.unfriended)
+                MENU_DELETE_REQUEST ->
+                    change(FriendRepo.DECLINE, FriendRepo.Status.NONE, false, R.string.request_deleted)
+                MENU_CANCEL_REQUEST ->
+                    change(FriendRepo.CANCEL, FriendRepo.Status.NONE, false, R.string.friend_request_cancelled)
             }
             true
         }

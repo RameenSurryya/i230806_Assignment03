@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Assignment 3 (PHP web services + SQLite): new texts. -->
+<resources>
+
+    <!-- Search (13): filter chips -->
+    <string name="search_filter_everyone">Everyone</string>
+    <string name="search_filter_friends">Friends</string>
+    <string name="search_filter_requests">Requests</string>
+    <string name="search_no_friends_match">No friends found for \"%1$s\"</string>
+    <string name="search_no_requests">No friend requests waiting</string>
+    <string name="search_offline">Offline: showing people saved on this phone</string>
+
+</resources>
