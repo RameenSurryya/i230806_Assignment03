@@ -20,6 +20,8 @@ import com.rameen.i230806.data.Db
 import com.rameen.i230806.data.MediaType
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.net.URL
+import com.bumptech.glide.Glide
 import java.util.concurrent.Executors
 
 /**
@@ -156,6 +158,13 @@ object Images {
             if (placeholder != 0) view.setImageResource(placeholder) else view.setImageDrawable(null)
             return
         }
+        // Assignment 3: pictures live on our server and the "id" is the file's URL: Glide loads
+        // it (with its own memory and disk cache, so it still shows offline once seen).
+        if (mediaId.startsWith("http")) {
+            val request = Glide.with(view.context.applicationContext).load(mediaId)
+            (if (placeholder != 0) request.placeholder(placeholder) else request).into(view)
+            return
+        }
         val cached = cache.get(mediaId)
         if (cached != null) {
             view.setImageBitmap(cached)
@@ -196,6 +205,26 @@ object Images {
      * passes the file to [onReady] (null if it failed). Already-downloaded videos are reused.
      */
     fun loadVideo(context: Context, mediaId: String, onReady: (File?) -> Unit) {
+        // Assignment 3: a video URL on our server is downloaded once into the cache folder,
+        // so it plays smoothly and still plays offline later.
+        if (mediaId.startsWith("http")) {
+            val cachedFile = File(context.cacheDir, "video_${mediaId.hashCode()}.mp4")
+            if (cachedFile.exists() && cachedFile.length() > 0) {
+                onReady(cachedFile)
+                return
+            }
+            background.execute {
+                val ok = try {
+                    URL(mediaId).openStream().use { input -> cachedFile.outputStream().use { input.copyTo(it) } }
+                    true
+                } catch (e: Exception) {
+                    cachedFile.delete()
+                    false
+                }
+                mainThread.post { onReady(if (ok) cachedFile else null) }
+            }
+            return
+        }
         val file = File(context.cacheDir, "video_$mediaId.mp4")
         if (file.exists() && file.length() > 0) {
             onReady(file)
