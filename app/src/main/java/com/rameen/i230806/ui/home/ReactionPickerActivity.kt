@@ -60,28 +60,31 @@ class ReactionPickerActivity : BaseActivity() {
             icons[index].setOnClickListener { choose(reaction) }
         }
 
-        watch(Db.post(postId)) { snapshot ->
-            val loaded = snapshot.getValue(Post::class.java)?.apply { id = snapshot.key ?: id }
-            if (loaded == null) {
-                finish()   // the post was deleted
-                return@watch
-            }
-            post = loaded
-            PostViews.bind(binding.post, loaded, object : PostViews.Listener {})
-            Db.getUser(loaded.authorId) { user ->
-                binding.tvTitle.text = getString(R.string.post_title_format, user?.name.orEmpty())
-            }
-            if (!positioned) {
-                positioned = true
-                raise(PostRepo.myReaction(loaded) ?: Reaction.LOVE)
-                // Wait until the post has been measured, then place the pill.
-                binding.post.root.post { placeAboveLike() }
-            }
+        // The saved copy at once, then the server's.
+        PostRepo.cachedPost(postId)?.let { showPost(it) }
+        PostRepo.refreshPost(postId) { fresh, gone ->
+            if (isDestroyed) return@refreshPost
+            if (gone) finish()   // the post was deleted
+            else if (fresh != null) showPost(fresh)
+        }
+    }
+
+    private fun showPost(loaded: Post) {
+        post = loaded
+        PostViews.bind(binding.post, loaded, object : PostViews.Listener {})
+        Db.getUser(loaded.authorId) { user ->
+            binding.tvTitle.text = getString(R.string.post_title_format, user?.name.orEmpty())
+        }
+        if (!positioned) {
+            positioned = true
+            raise(PostRepo.myReaction(loaded) ?: Reaction.LOVE)
+            // Wait until the post has been measured, then place the pill.
+            binding.post.root.post { placeAboveLike() }
         }
     }
 
     private fun choose(reaction: Reaction) {
-        post?.let { PostRepo.react(it, reaction) }
+        post?.let { PostRepo.react(this, it, reaction) }
         finish()
     }
 

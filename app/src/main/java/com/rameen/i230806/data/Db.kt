@@ -98,18 +98,26 @@ object Db {
     /** Users already loaded once, so lists don't download the same person again for every row. */
     private val userCache = HashMap<String, User>()
 
-    /** Loads one user (from the cache if possible) and passes it to [onLoaded] (null if missing). */
+    /**
+     * Loads one user and passes it to [onLoaded] (null if unknown and offline).
+     * Assignment 3: memory first, then the phone's SQLite copy, then our server
+     * (users/profile.php), which is saved to SQLite for next time.
+     */
     fun getUser(uid: String, onLoaded: (User?) -> Unit) {
         userCache[uid]?.let { onLoaded(it); return }
-        user(uid).addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val loaded = snapshot.getValue(User::class.java)
-                if (loaded != null) userCache[uid] = loaded
-                onLoaded(loaded)
-            }
-
-            override fun onCancelled(error: DatabaseError) = onLoaded(null)
-        })
+        Json.cachedUser(uid)?.let {
+            userCache[uid] = it
+            onLoaded(it)
+            return
+        }
+        if (uid.isEmpty()) {
+            onLoaded(null)
+            return
+        }
+        Api.get("users/profile.php", mapOf("id" to uid)) { result ->
+            val json = result.json
+            onLoaded(if (result.ok && json != null) Json.saveUser(json.getJSONObject("user")) else null)
+        }
     }
 
     /** Puts a fresh copy of [user] in the cache (after a profile edit or a live update). */

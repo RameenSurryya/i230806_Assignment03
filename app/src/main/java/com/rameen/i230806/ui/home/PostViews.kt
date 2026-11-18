@@ -46,7 +46,8 @@ object PostViews {
             Avatars.bind(v.tvAuthorAvatar, v.ivAuthorPhoto, user)
             v.flAuthorAvatar.contentDescription = context.getString(R.string.cd_post_author, user.name)
         }
-        v.tvTime.text = Times.ago(context, post.timestamp)
+        v.tvTime.text =
+            if (post.pending) context.getString(R.string.pending_waiting) else Times.ago(context, post.timestamp)
 
         // ----- Text -----
         v.tvPostText.text = post.text

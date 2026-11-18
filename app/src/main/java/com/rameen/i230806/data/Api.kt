@@ -138,13 +138,23 @@ object Api {
     // ---------------------------------------------------------------------------------------
 
     /** Reads a picked / captured file (content:// or file://) into an upload part. */
-    fun filePart(context: Context, field: String, uri: Uri): FilePart? = try {
-        val resolver = context.contentResolver
-        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
-        val mime = resolver.getType(uri) ?: guessMime(uri.toString())
-        FilePart(field, fileName(context, uri, mime), mime, bytes)
-    } catch (e: Exception) {
-        null
+    fun filePart(context: Context, field: String, uri: Uri): FilePart? {
+        return try {
+            val resolver = context.contentResolver
+            val mime = resolver.getType(uri) ?: guessMime(uri.toString())
+            if (mime.startsWith("image/") && mime != "image/gif") {
+                // Photos are shrunk first (longest side 1080 px, JPEG): small, fast uploads.
+                val jpeg = com.rameen.i230806.util.Images.compress(context, uri)
+                if (jpeg != null) {
+                    val base = fileName(context, uri, mime).substringBeforeLast('.')
+                    return FilePart(field, "$base.jpg", "image/jpeg", jpeg)
+                }
+            }
+            val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
+            FilePart(field, fileName(context, uri, mime), mime, bytes)
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /** The file's real name ("report.pdf"); for camera files a name with the right extension. */

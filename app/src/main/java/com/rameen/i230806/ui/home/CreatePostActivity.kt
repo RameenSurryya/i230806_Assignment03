@@ -27,8 +27,9 @@ import java.util.concurrent.Executors
  * 07 Create post.
  *  - Type the text; add photos with Photo/video (the Photo picker, several at once) or Camera
  *    (one photo). Chosen photos show as thumbnails with an X to remove them.
- *  - Post: PostRepo.create uploads each photo to media/ and then saves posts/{id}. The button
- *    is disabled while that runs, then the screen closes and Home shows the new post.
+ *  - Post (Assignment 3): PostRepo.create sends the text and the photos (shrunk) to
+ *    posts/create.php. Without internet the post is queued (it shows on Home as "Waiting to
+ *    send...") and is sent automatically later. The screen closes and Home shows the new post.
  *  - X / Back close without posting. The chips, swatches and other sheet rows are visual only.
  * Opened with Extra.PICK_MODE (the photo icon on Home) it goes straight to the Photo picker.
  */
@@ -155,14 +156,14 @@ class CreatePostActivity : BaseActivity() {
             return
         }
         setBusy(true)
-        PostRepo.create(this, text, pictures.toList()) { saved ->
+        PostRepo.create(this, text, pictures.toList()) { saved, error ->
             if (isDestroyed) return@create
             if (saved) {
                 toast(R.string.create_posted)
                 finish()
             } else {
                 setBusy(false)
-                toast(R.string.create_error)
+                toast(error ?: getString(R.string.create_error))
             }
         }
     }

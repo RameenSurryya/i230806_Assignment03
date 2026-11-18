@@ -13,10 +13,12 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
 import com.rameen.i230806.R
+import com.rameen.i230806.data.AuthRepo
 import com.rameen.i230806.data.Audience
 import com.rameen.i230806.data.Db
 import com.rameen.i230806.data.Extra
 import com.rameen.i230806.data.MediaType
+import com.rameen.i230806.data.Outbox
 import com.rameen.i230806.data.PickMode
 import com.rameen.i230806.data.Post
 import com.rameen.i230806.data.PostRepo
@@ -32,10 +34,13 @@ import com.rameen.i230806.util.Avatars
 import com.rameen.i230806.util.Images
 
 /**
- * 04 Home: the composer, the stories row and the feed, all live from the database.
+ * 04 Home: the composer, the stories row and the feed.
  *
- *  - Feed: the newest 50 posts (posts/ ordered by timestamp), keeping only mine and my
- *    friends', newest first. A post card is item_post.xml, filled by PostViews.
+ *  - Feed (Assignment 3): the newest 50 posts of mine and my friends' from our server
+ *    (posts/feed.php), saved in SQLite. The screen shows the SQLite copy at once (so it works
+ *    offline), refreshes from the server every time it shows, and again after the sync worker
+ *    has sent queued actions. Posts written offline appear with "Waiting to send...".
+ *    A post card is item_post.xml, filled by PostViews.
  *  - Stories row: everyone (me + friends) with a story that hasn't expired (24 hours) and that
  *    I'm allowed to see (close-friends stories only if they added me to their close friends).
  *    A teal ring means there is a story I haven't watched yet; those people come first.
@@ -88,18 +93,17 @@ class HomeActivity : BaseActivity() {
         binding.rvFeed.isNestedScrollingEnabled = false
         binding.rvFeed.adapter = feedAdapter
 
-        watch(Db.user(myUid)) { snapshot ->
-            snapshot.getValue(User::class.java)?.let { showMe(it) }
+        // Offline actions that were sent later: reload the feed.
+        var lastSync = Outbox.synced.value
+        Outbox.synced.observe(this) { time ->
+            if (time != lastSync) {
+                lastSync = time
+                reloadFeed()
+                refreshFeed()
+            }
         }
-        watch(Db.friends(myUid)) { snapshot ->
-            friendUids = snapshot.children.mapNotNull { it.key }.toSet()
-            showFeed()
-            showStories()
-        }
-        watch(Db.posts().orderByChild("timestamp").limitToLast(FEED_SIZE)) { snapshot ->
-            allPosts = snapshot.children.mapNotNull { it.getValue(Post::class.java)?.apply { id = it.key ?: id } }
-            showFeed()
-        }
+
+        // Stories are still read from Firebase until step 6 moves them to the server.
         watch(Db.allStories()) { snapshot ->
             allStories = snapshot.children.associate { author ->
                 (author.key ?: "") to author.children.mapNotNull {
@@ -110,10 +114,27 @@ class HomeActivity : BaseActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        AuthRepo.me { user -> if (user != null && !isDestroyed) showMe(user) }
+        reloadFeed()
+        refreshFeed()
+    }
+
+    /** Draws the feed from SQLite (instant, also offline). */
+    private fun reloadFeed() {
+        allPosts = PostRepo.cachedFeed(FEED_SIZE)
+        showFeed()
+    }
+
+    /** Asks the server for the newest posts; redraws when the answer is saved. */
+    private fun refreshFeed() {
+        PostRepo.refreshFeed { ok -> if (ok && !isDestroyed) reloadFeed() }
+    }
+
     /** Your avatar in the composer and the Create story card, and "What's on your mind, Jacob?". */
     private fun showMe(user: User) {
         me = user
-        Db.remember(user)
         Avatars.bind(binding.tvComposerAvatar, binding.ivComposerPhotoAvatar, user)
         Avatars.bind(binding.tvCreateAvatar, binding.ivCreateAvatarPhoto, user)
         binding.tvComposer.text = getString(R.string.home_composer_hint_name, user.name.substringBefore(' '))
@@ -124,13 +145,9 @@ class HomeActivity : BaseActivity() {
     // ---------------------------------------------------------------------------------------
 
     private fun showFeed() {
-        val visibleAuthors = friendUids + myUid
+        // The server already sends only mine and my friends' posts.
         feed.clear()
-        feed.addAll(
-            allPosts
-                .filter { it.authorId in visibleAuthors && it.id !in hiddenPosts }
-                .sortedByDescending { it.timestamp }
-        )
+        feed.addAll(allPosts.filter { it.id !in hiddenPosts }.sortedByDescending { it.timestamp })
         feedAdapter.notifyDataSetChanged()
         binding.tvFeedEmpty.visibility = if (feed.isEmpty()) View.VISIBLE else View.GONE
     }
@@ -139,13 +156,15 @@ class HomeActivity : BaseActivity() {
     private val postListener = object : PostViews.Listener {
         override fun onAuthor(post: Post) = openProfile(post.authorId)
 
-        override fun onLike(post: Post) = PostRepo.toggleLike(post)
+        override fun onLike(post: Post) = PostRepo.toggleLike(this@HomeActivity, post) { reloadFeed() }
 
         override fun onLikeLongPress(post: Post) =
             openScreen(ReactionPickerActivity::class.java) { putExtra(Extra.POST_ID, post.id) }
 
-        override fun onComment(post: Post) =
-            openScreen(CommentsActivity::class.java) { putExtra(Extra.POST_ID, post.id) }
+        override fun onComment(post: Post) {
+            if (post.pending) toast(R.string.comment_error_post_pending)
+            else openScreen(CommentsActivity::class.java) { putExtra(Extra.POST_ID, post.id) }
+        }
 
         override fun onShare(post: Post) =
             openScreen(ShareToChatActivity::class.java) { putExtra(Extra.POST_ID, post.id) }
@@ -162,7 +181,8 @@ class HomeActivity : BaseActivity() {
             popup.menu.add(if (mine) R.string.post_delete else R.string.post_hide)
             popup.setOnMenuItemClickListener {
                 if (mine) {
-                    PostRepo.delete(post)
+                    PostRepo.delete(this@HomeActivity, post)
+                    reloadFeed()
                     toast(R.string.post_deleted)
                 } else {
                     onHide(post)
@@ -194,7 +214,7 @@ class HomeActivity : BaseActivity() {
         val now = Db.now()
         return allStories[author].orEmpty().filter { story ->
             story.expiresAt > now &&
-                    (story.audience != Audience.CLOSE_FRIENDS || author == myUid || closeTo[author] == true)
+                (story.audience != Audience.CLOSE_FRIENDS || author == myUid || closeTo[author] == true)
         }
     }
 
@@ -204,7 +224,7 @@ class HomeActivity : BaseActivity() {
         // Close-friends stories need one check per author: closeFriends/{author}/{me}.
         val unchecked = authors.filter { author ->
             author != myUid && author !in closeTo &&
-                    allStories[author].orEmpty().any { it.audience == Audience.CLOSE_FRIENDS }
+                allStories[author].orEmpty().any { it.audience == Audience.CLOSE_FRIENDS }
         }
         for (author in unchecked) {
             Db.closeFriends(author).child(myUid).addListenerForSingleValueEvent(object : ValueEventListener {

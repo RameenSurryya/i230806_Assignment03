@@ -1,6 +1,7 @@
 package com.rameen.i230806.ui.home
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.LayoutInflater
@@ -17,6 +18,7 @@ import com.rameen.i230806.R
 import com.rameen.i230806.data.Comment
 import com.rameen.i230806.data.Db
 import com.rameen.i230806.data.Extra
+import com.rameen.i230806.data.Outbox
 import com.rameen.i230806.data.PickMode
 import com.rameen.i230806.data.Post
 import com.rameen.i230806.data.PostRepo
@@ -31,7 +33,10 @@ import com.rameen.i230806.util.Images
 import com.rameen.i230806.util.Times
 
 /**
- * 06 Comments of one post (Extra.POST_ID), live from comments/{postId}.
+ * 06 Comments of one post (Extra.POST_ID), from comments/list.php (Assignment 3).
+ *
+ *  - SQLite copy first (works offline), refreshed from the server every time the screen shows.
+ *    Comments written offline show "Waiting to send..." and are sent when the internet is back.
  *
  *  - The list is a RecyclerView with two kinds of rows: a comment or reply (item_comment.xml)
  *    and "View 3 more replies" (item_comment_more.xml). Replies are one level deep and sit
@@ -39,7 +44,7 @@ import com.rameen.i230806.util.Times
  *  - Sort pill: Most relevant (most liked first) or Newest.
  *  - Like on a comment: like / undo (PostRepo.toggleCommentLike). Reply: the bar shows
  *    "Replying to <name>" with Cancel, and the next comment is saved as a reply.
- *  - Camera button: add one photo to the comment (Photo picker, uploaded straight away).
+ *  - Camera button: add one photo to the comment (Photo picker; it is sent with the comment).
  *  - Long-press your own comment to delete it. Tap a name or avatar for their profile.
  *  - The reaction summary at the top opens the Reaction picker for the post.
  */
@@ -65,7 +70,7 @@ class CommentsActivity : BaseActivity() {
     private val openThreads = mutableSetOf<String>()
 
     private var replyingTo: Comment? = null
-    private var attachedId = ""
+    private var attachedPhoto: Uri? = null
 
     private val pickImage =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -108,20 +113,45 @@ class CommentsActivity : BaseActivity() {
         binding.ivRemoveAttached.setOnClickListener { clearPhoto() }
         binding.ivSend.setOnClickListener { send() }
 
-        watch(Db.post(postId)) { snapshot ->
-            val loaded = snapshot.getValue(Post::class.java)?.apply { id = snapshot.key ?: id }
-            if (loaded == null) {
+        // Offline actions that were sent later: reload.
+        var lastSync = Outbox.synced.value
+        Outbox.synced.observe(this) { time ->
+            if (time != lastSync) {
+                lastSync = time
+                refresh()
+            }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        reload()
+        refresh()
+    }
+
+    /** Draws the post summary and comments from SQLite. */
+    private fun reload() {
+        PostRepo.cachedPost(postId)?.let {
+            post = it
+            showSummary(it)
+        }
+        comments = PostRepo.cachedComments(postId)
+        showComments()
+    }
+
+    /** Asks the server for the post and its comments; redraws when saved. */
+    private fun refresh() {
+        PostRepo.refreshPost(postId) { fresh, gone ->
+            if (isDestroyed) return@refreshPost
+            if (gone) {
                 toast(R.string.comment_post_gone)
                 finish()
-                return@watch
+            } else if (fresh != null) {
+                post = fresh
+                showSummary(fresh)
             }
-            post = loaded
-            showSummary(loaded)
         }
-        watch(Db.comments(postId)) { snapshot ->
-            comments = snapshot.children.mapNotNull { it.getValue(Comment::class.java)?.apply { id = it.key ?: id } }
-            showComments()
-        }
+        PostRepo.refreshComments(postId) { ok -> if (ok && !isDestroyed) reload() }
     }
 
     // ---------------------------------------------------------------------------------------
@@ -193,25 +223,16 @@ class CommentsActivity : BaseActivity() {
             .showSoftInput(binding.etReply, InputMethodManager.SHOW_IMPLICIT)
     }
 
+    /** The picked photo is shown as a preview; it is shrunk and sent together with the comment. */
     private fun attachPhoto(uri: String) {
-        toast(R.string.comment_uploading)
-        binding.ivSend.isEnabled = false
-        Images.uploadImage(this, uri.toUri()) { mediaId ->
-            if (isDestroyed) return@uploadImage
-            binding.ivSend.isEnabled = true
-            if (mediaId == null) {
-                toast(R.string.edit_error_upload)
-                return@uploadImage
-            }
-            attachedId = mediaId
-            binding.flAttached.visibility = View.VISIBLE
-            Images.load(binding.ivAttached, mediaId)
-            toast(R.string.comment_photo_added)
-        }
+        attachedPhoto = uri.toUri()
+        binding.flAttached.visibility = View.VISIBLE
+        Images.load(binding.ivAttached, uri)
+        toast(R.string.comment_photo_added)
     }
 
     private fun clearPhoto() {
-        attachedId = ""
+        attachedPhoto = null
         binding.flAttached.visibility = View.GONE
         Images.load(binding.ivAttached, null)
     }
@@ -219,14 +240,22 @@ class CommentsActivity : BaseActivity() {
     private fun send() {
         val current = post ?: return
         val text = binding.etReply.text.toString().trim()
-        if (text.isEmpty() && attachedId.isEmpty()) {
+        if (text.isEmpty() && attachedPhoto == null) {
             toast(R.string.comment_error_empty)
             return
         }
-        PostRepo.addComment(current, text, attachedId, replyingTo)
+        if (current.pending) {
+            toast(R.string.comment_error_post_pending)
+            return
+        }
+        PostRepo.addComment(this, current, text, attachedPhoto, replyingTo) { ok, error ->
+            if (isDestroyed) return@addComment
+            if (!ok && error != null) toast(error)
+            reload()
+        }
+        reload()   // the pending comment shows at once
         binding.etReply.setText("")
-        attachedId = ""
-        binding.flAttached.visibility = View.GONE
+        clearPhoto()
         setReplyingTo(null)
         getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(binding.etReply.windowToken, 0)
     }
@@ -235,7 +264,8 @@ class CommentsActivity : BaseActivity() {
         val popup = PopupMenu(this, anchor)
         popup.menu.add(R.string.comment_delete)
         popup.setOnMenuItemClickListener {
-            PostRepo.deleteComment(comment)
+            PostRepo.deleteComment(this, comment)
+            reload()
             toast(R.string.comment_deleted)
             true
         }
@@ -317,8 +347,8 @@ class CommentsActivity : BaseActivity() {
         val liked = comment.likes.containsKey(myUid)
         v.tvLike.setTextColor(ContextCompat.getColor(this, if (liked) R.color.teal else R.color.text_grey))
 
-        v.tvTime.text = Times.ago(this, comment.timestamp)
-        v.tvLike.setOnClickListener { PostRepo.toggleCommentLike(comment) }
+        v.tvTime.text = if (comment.pending) getString(R.string.pending_waiting) else Times.ago(this, comment.timestamp)
+        v.tvLike.setOnClickListener { PostRepo.toggleCommentLike(this, comment) { reload() } }
         v.tvReply.setOnClickListener { setReplyingTo(comment) }
 
         // Long-press your own comment: delete.

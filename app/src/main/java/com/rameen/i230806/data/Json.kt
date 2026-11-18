@@ -62,4 +62,63 @@ object Json {
 
     /** A user from the phone's SQLite copy, or null if we've never seen them. */
     fun cachedUser(id: String): User? = LocalDb.get(LocalDb.USERS, "id", id)?.let { user(it) }
+
+    // ---------------------------------------------------------------------------------------
+    // Posts and comments
+    // ---------------------------------------------------------------------------------------
+
+    /** A post from the server (or a pending local one: id "local-<uuid>"). */
+    fun post(j: JSONObject): Post {
+        val reactions = HashMap<String, String>()
+        j.optJSONObject("reactions")?.let { r -> r.keys().forEach { reactions[it] = r.optString(it) } }
+        return Post(
+            id = str(j, "id"),
+            authorId = j.optLong("author_id").toString(),
+            text = str(j, "text"),
+            imageIds = strings(j.optJSONArray("image_urls")),   // URLs now (content:// while pending)
+            timestamp = j.optLong("created_at"),
+            reactions = reactions,
+            commentCount = j.optLong("comment_count"),
+            shareCount = j.optLong("share_count"),
+            pending = j.optBoolean("pending"),
+        )
+    }
+
+    /** Keeps a post (and its author) in SQLite. The columns are always taken from the JSON. */
+    fun savePost(j: JSONObject): Post {
+        j.optJSONObject("author")?.let { saveUser(it) }
+        LocalDb.put(
+            LocalDb.POSTS, "id", str(j, "id"), j,
+            mapOf("author_id" to j.optLong("author_id").toString(), "created_at" to j.optLong("created_at"),
+                "pending" to j.optBoolean("pending")),
+        )
+        return post(j)
+    }
+
+    /** A comment from the server (or a pending local one). */
+    fun comment(j: JSONObject): Comment {
+        val likes = HashMap<String, Boolean>()
+        strings(j.optJSONArray("likes")).forEach { likes[it] = true }
+        return Comment(
+            id = str(j, "id"),
+            postId = str(j, "post_id"),
+            authorId = j.optLong("author_id").toString(),
+            text = str(j, "text"),
+            imageId = str(j, "image_url"),
+            parentId = if (j.isNull("parent_id")) "" else str(j, "parent_id"),
+            timestamp = j.optLong("created_at"),
+            likes = likes,
+            pending = j.optBoolean("pending"),
+        )
+    }
+
+    fun saveComment(j: JSONObject): Comment {
+        j.optJSONObject("author")?.let { saveUser(it) }
+        LocalDb.put(
+            LocalDb.COMMENTS, "id", str(j, "id"), j,
+            mapOf("post_id" to str(j, "post_id"), "created_at" to j.optLong("created_at"),
+                "pending" to j.optBoolean("pending")),
+        )
+        return comment(j)
+    }
 }

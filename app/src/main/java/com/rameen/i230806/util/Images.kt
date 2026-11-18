@@ -111,8 +111,12 @@ object Images {
             .addOnCompleteListener { task -> onDone(if (task.isSuccessful) mediaId else null) }
     }
 
-    /** Reads the picture, scales it down to [MAX_SIDE] and returns it as JPEG bytes. */
-    private fun compress(context: Context, uri: Uri): ByteArray? {
+    /**
+     * Reads the picture, scales it down to [MAX_SIDE] and returns it as JPEG bytes.
+     * Assignment 3: every photo is shrunk like this before it is uploaded to our server
+     * (Api.filePart), so uploads are small and fast (about 100-200 KB instead of 5 MB).
+     */
+    fun compress(context: Context, uri: Uri): ByteArray? {
         val bitmap = decodeScaled(context, uri) ?: return null
         val out = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)
@@ -160,7 +164,9 @@ object Images {
         }
         // Assignment 3: pictures live on our server and the "id" is the file's URL: Glide loads
         // it (with its own memory and disk cache, so it still shows offline once seen).
-        if (mediaId.startsWith("http")) {
+        // A picture still on the phone (content:// or file://, e.g. picked but not uploaded
+        // yet, or waiting in the offline queue) is shown the same way.
+        if (mediaId.startsWith("http") || mediaId.startsWith("content:") || mediaId.startsWith("file:")) {
             val request = Glide.with(view.context.applicationContext).load(mediaId)
             (if (placeholder != 0) request.placeholder(placeholder) else request).into(view)
             return

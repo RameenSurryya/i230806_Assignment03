@@ -10,4 +10,8 @@
     <string name="search_no_requests">No friend requests waiting</string>
     <string name="search_offline">Offline: showing people saved on this phone</string>
 
+    <!-- Posts and comments written offline (step 5) -->
+    <string name="pending_waiting">Waiting to send…</string>
+    <string name="comment_error_post_pending">Wait until this post is sent, then comment.</string>
+
 </resources>

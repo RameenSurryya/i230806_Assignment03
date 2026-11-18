@@ -72,6 +72,7 @@ data class Post(
     var reactions: Map<String, String> = emptyMap(), // uid -> reaction key ("like", "love" ...)
     var commentCount: Long = 0,
     var shareCount: Long = 0,
+    var pending: Boolean = false,                  // created offline, not sent to the server yet
 )
 
 @IgnoreExtraProperties
@@ -84,6 +85,7 @@ data class Comment(
     var parentId: String = "",                  // "" = top-level comment, else the comment it replies to
     var timestamp: Long = 0,
     var likes: Map<String, Boolean> = emptyMap(), // uid -> true
+    var pending: Boolean = false,               // written offline, not sent to the server yet
 )
 
 @IgnoreExtraProperties
