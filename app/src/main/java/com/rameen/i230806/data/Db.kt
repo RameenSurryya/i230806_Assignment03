@@ -19,8 +19,11 @@ object Db {
     private val database: FirebaseDatabase get() = FirebaseDatabase.getInstance()
     val root: DatabaseReference get() = database.reference
 
-    /** The logged-in user's id, or null when nobody is logged in. */
-    val uid: String? get() = auth.currentUser?.uid
+    /**
+     * The logged-in user's id, or null when nobody is logged in.
+     * Assignment 3: the id from our server ("12"), kept in SessionStore after login.
+     */
+    val uid: String? get() = SessionStore.userId.takeIf { it > 0 }?.toString()
 
     // ---------------------------------------------------------------------------------------
     // Paths

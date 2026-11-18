@@ -6,11 +6,8 @@ import android.text.method.PasswordTransformationMethod
 import android.util.Patterns
 import android.view.View
 import android.view.inputmethod.InputMethodManager
-import com.google.firebase.FirebaseNetworkException
-import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
-import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.rameen.i230806.R
-import com.rameen.i230806.data.Db
+import com.rameen.i230806.data.AuthRepo
 import com.rameen.i230806.data.User
 import com.rameen.i230806.databinding.ActivityLoginBinding
 import com.rameen.i230806.ui.BaseActivity
@@ -18,13 +15,14 @@ import com.rameen.i230806.util.Avatars
 import com.rameen.i230806.util.RecentLogin
 
 /**
- * 02 Login with Firebase Authentication (email + password).
+ * 02 Login with our PHP web service (Assignment 3).
  *
- *  - Log in: Firebase checks the email and password. On success we load the user's profile
- *    from users/{uid} and go to Home (or Edit profile the first time). Errors show a message.
+ *  - Log in: auth/login.php checks the email and password (password_verify against the stored
+ *    hash) and answers with a session token and the profile. AuthRepo saves both, then we go to
+ *    Home (or Edit profile the first time). Errors show the server's message.
  *  - Recent login card: the last account used on this phone (RecentLogin). Tapping it fills
  *    in the email so only the password is left; "..." removes it from this phone.
- *  - Forgot password: Firebase emails a reset link to the address typed in the email field.
+ *  - Forgot password: our local server can't send emails, so it only shows a message.
  *  - Create new account opens Sign up (Back returns here).
  *  - The eye shows or hides the password.
  */
@@ -98,49 +96,29 @@ class LoginActivity : BaseActivity() {
         }
 
         setBusy(true)
-        Db.auth.signInWithEmailAndPassword(email, password)
-            .addOnSuccessListener { result ->
-                // Signed in. Now read this user's profile from the database.
-                Db.getUser(result.user!!.uid) { user ->
-                    setBusy(false)
-                    if (user == null) {
-                        Db.auth.signOut()
-                        toast(R.string.login_error_profile)
-                    } else {
-                        RecentLogin.save(this, user)
-                        openAfterLogin(user)
-                    }
-                }
+        AuthRepo.logIn(email, password) { user, error ->
+            setBusy(false)
+            if (user == null) {
+                // "Wrong email or password", or "No connection to the server" when offline.
+                toast(error ?: getString(R.string.error_generic))
+            } else {
+                RecentLogin.save(this, user)
+                openAfterLogin(user)
             }
-            .addOnFailureListener { error ->
-                setBusy(false)
-                toast(
-                    when (error) {
-                        // Wrong password, or no account with this email.
-                        is FirebaseAuthInvalidCredentialsException,
-                        is FirebaseAuthInvalidUserException -> R.string.login_error_wrong
-                        is FirebaseNetworkException -> R.string.error_network
-                        else -> R.string.error_generic
-                    }
-                )
-            }
+        }
     }
 
-    /** Firebase sends an email with a link to choose a new password. */
+    /** Password reset needs an email server, which the local XAMPP setup doesn't have. */
     private fun sendPasswordReset() {
         val email = binding.etEmail.text.toString().trim()
         if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             toast(R.string.login_reset_need_email)
             return
         }
-        Db.auth.sendPasswordResetEmail(email)
-            .addOnSuccessListener { toast(getString(R.string.login_reset_sent, email)) }
-            .addOnFailureListener { error ->
-                toast(if (error is FirebaseNetworkException) R.string.error_network else R.string.error_generic)
-            }
+        toast(R.string.login_reset_unavailable)
     }
 
-    /** While Firebase is working, the button is disabled so it can't be pressed twice. */
+    /** While the server is working, the button is disabled so it can't be pressed twice. */
     private fun setBusy(busy: Boolean) {
         binding.btnLogin.isEnabled = !busy
         binding.btnLogin.alpha = if (busy) 0.6f else 1f

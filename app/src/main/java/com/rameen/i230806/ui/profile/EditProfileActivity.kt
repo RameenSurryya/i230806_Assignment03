@@ -1,18 +1,15 @@
-﻿package com.rameen.i230806.ui.profile
+package com.rameen.i230806.ui.profile
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.net.toUri
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.MutableData
-import com.google.firebase.database.Transaction
-import com.google.firebase.database.ValueEventListener
 import com.rameen.i230806.R
-import com.rameen.i230806.data.Db
+import com.rameen.i230806.data.AuthRepo
 import com.rameen.i230806.data.Extra
+import com.rameen.i230806.data.NetworkMonitor
 import com.rameen.i230806.data.PickMode
 import com.rameen.i230806.data.User
 import com.rameen.i230806.databinding.ActivityEditProfileBinding
@@ -25,20 +22,22 @@ import com.rameen.i230806.util.RecentLogin
 import java.util.Locale
 
 /**
- * 16 Edit profile, saved to users/{uid} in the Realtime Database.
+ * 16 Edit profile, saved through our web service profile/update.php (Assignment 3).
  *
  * Two ways in:
  *  - From Profile ("Edit profile"): Cancel and Save return to Profile.
  *  - Right after sign up (Extra.FIRST_TIME, step 3 of 3): titled "Set up your profile", no
- *    Cancel. Save sets setupDone = true and opens Home. Until then, Splash and Login keep
- *    sending the user back here.
+ *    Cancel. Save sets setup_done = 1 on the server and opens Home. Until then, Splash and
+ *    Login keep sending the user back here.
+ *
+ * Loading: my profile from SQLite straight away, then fresh from the server (AuthRepo.me).
  *
  * Pictures: "Edit" (or tapping the avatar / cover) opens the Photo picker for one image. The
- * picture is shrunk and uploaded straight away (Images.uploadImage) and shown; its media id is
- * written to the profile when Save is pressed.
+ * picture is shown at once from the phone; Save uploads it together with the text fields in
+ * one multipart request, and the server stores the file in uploads/profile or uploads/cover.
  *
- * Usernames are unique: usernames/{username} holds the uid of its owner, claimed with a
- * transaction (see claimUsername), so two people can't take the same name at the same moment.
+ * Usernames are unique: the server checks that nobody else has it (MySQL UNIQUE column) and
+ * answers "That username is taken" otherwise.
  */
 class EditProfileActivity : BaseActivity() {
 
@@ -46,12 +45,16 @@ class EditProfileActivity : BaseActivity() {
 
     private val firstTime: Boolean by lazy { intent.getBooleanExtra(Extra.FIRST_TIME, false) }
 
-    /** The profile as loaded from the database (null until it arrives). */
+    /** My profile as loaded (null until it arrives). */
     private var me: User? = null
 
-    /** Media ids of the pictures in use: the saved ones, or newly uploaded ones. */
+    /** The pictures shown: server URLs of the saved ones, or content:// of newly picked ones. */
     private var photoId = ""
     private var coverId = ""
+
+    /** Newly picked pictures, uploaded when Save is pressed (null = unchanged). */
+    private var newPhoto: Uri? = null
+    private var newCover: Uri? = null
 
     /** Which picture the Photo picker was opened for. */
     private var pickingCover = false
@@ -62,7 +65,7 @@ class EditProfileActivity : BaseActivity() {
             if (result.resultCode != RESULT_OK) return@registerForActivityResult
             val uri = result.data?.getStringArrayListExtra(Extra.PICKED_URIS)?.firstOrNull()
                 ?: return@registerForActivityResult
-            uploadPicture(uri)
+            showPicked(uri.toUri())
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,21 +99,18 @@ class EditProfileActivity : BaseActivity() {
     // Loading
     // ---------------------------------------------------------------------------------------
 
-    /** Reads users/{my uid} once and fills in the fields. */
+    /**
+     * The cached copy fills the fields at once; the server's copy only if nothing was shown yet
+     * (so it never overwrites what the user is typing).
+     */
     private fun loadProfile() {
-        Db.user(myUid).addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val user = snapshot.getValue(User::class.java) ?: User(uid = myUid)
-                me = user
-                showProfile(user)
-                setBusy(false)
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                setBusy(false)
-                toast(R.string.error_network)
-            }
-        })
+        AuthRepo.me { user ->
+            if (me != null || user == null || isDestroyed) return@me
+            me = user
+            showProfile(user)
+            setBusy(false)
+        }
+        if (me == null && !NetworkMonitor.isOnline) toast(R.string.error_network)
     }
 
     private fun showProfile(user: User) {
@@ -159,23 +159,16 @@ class EditProfileActivity : BaseActivity() {
         )
     }
 
-    /** Shrinks and uploads the chosen picture, then shows it. Save writes its id to the profile. */
-    private fun uploadPicture(uri: String) {
-        setBusy(true)
-        Images.uploadImage(this, uri.toUri()) { mediaId ->
-            if (isDestroyed) return@uploadImage
-            setBusy(false)
-            if (mediaId == null) {
-                toast(R.string.edit_error_upload)
-                return@uploadImage
-            }
-            if (pickingCover) {
-                coverId = mediaId
-                showCover()
-            } else {
-                photoId = mediaId
-                showAvatar()
-            }
+    /** Shows the chosen picture straight away; Save uploads it. */
+    private fun showPicked(uri: Uri) {
+        if (pickingCover) {
+            newCover = uri
+            coverId = uri.toString()
+            showCover()
+        } else {
+            newPhoto = uri
+            photoId = uri.toString()
+            showAvatar()
         }
     }
 
@@ -184,7 +177,7 @@ class EditProfileActivity : BaseActivity() {
     // ---------------------------------------------------------------------------------------
 
     private fun save() {
-        val old = me ?: return
+        if (me == null) return
         val name = binding.etName.text.toString().trim()
         val username = binding.etUsername.text.toString().trim().lowercase(Locale.getDefault())
 
@@ -197,90 +190,38 @@ class EditProfileActivity : BaseActivity() {
             return
         }
 
-        val updated = old.copy(
-            name = name,
-            nameLower = name.lowercase(Locale.getDefault()),
-            username = username,
-            usernameLower = username,
-            website = binding.etWebsite.text.toString().trim(),
-            bio = binding.etBio.text.toString().trim(),
-            work = binding.etWork.text.toString().trim(),
-            study = binding.etStudy.text.toString().trim(),
-            city = binding.etCity.text.toString().trim(),
-            phone = binding.etPhone.text.toString().trim(),
-            photoId = photoId,
-            coverId = coverId,
-            setupDone = true,
+        // Only the fields the server should change; email and gender are shown, not edited.
+        val fields = mapOf(
+            "name" to name,
+            "username" to username,
+            "website" to binding.etWebsite.text.toString().trim(),
+            "bio" to binding.etBio.text.toString().trim(),
+            "work" to binding.etWork.text.toString().trim(),
+            "study" to binding.etStudy.text.toString().trim(),
+            "city" to binding.etCity.text.toString().trim(),
+            "phone" to binding.etPhone.text.toString().trim(),
         )
 
         setBusy(true)
-        claimUsername(username, old.username) { claimed ->
-            if (!claimed) {
+        AuthRepo.updateProfile(this, fields, newPhoto, newCover) { user, error ->
+            if (isDestroyed) return@updateProfile
+            if (user == null) {
                 setBusy(false)
-                toast(R.string.edit_error_username_taken)
-                return@claimUsername
+                // "That username is taken", or "No connection to the server" when offline.
+                toast(error ?: getString(R.string.error_generic))
+                return@updateProfile
             }
-            // updateChildren changes only these keys; online, fcmToken etc. stay as they are.
-            Db.user(myUid).updateChildren(
-                mapOf(
-                    "name" to updated.name,
-                    "nameLower" to updated.nameLower,
-                    "username" to updated.username,
-                    "usernameLower" to updated.usernameLower,
-                    "website" to updated.website,
-                    "bio" to updated.bio,
-                    "work" to updated.work,
-                    "study" to updated.study,
-                    "city" to updated.city,
-                    "phone" to updated.phone,
-                    "photoId" to updated.photoId,
-                    "coverId" to updated.coverId,
-                    "setupDone" to true,
-                )
-            ).addOnSuccessListener {
-                Db.remember(updated)
-                RecentLogin.save(this, updated)
-                toast(R.string.edit_saved)
-                if (firstTime) {
-                    // Setup finished: Home becomes the only screen.
-                    openScreen(HomeActivity::class.java, Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                }
-                finish()
-            }.addOnFailureListener {
-                setBusy(false)
-                toast(R.string.error_generic)
+            RecentLogin.save(this, user)
+            toast(R.string.edit_saved)
+            if (firstTime) {
+                // Setup finished: Home becomes the only screen.
+                openScreen(HomeActivity::class.java, Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             }
+            finish()
         }
     }
 
-    /**
-     * Makes usernames/{username} = my uid, but only if nobody else owns it.
-     *
-     * A transaction reads the current value and writes the new one in one step on the server:
-     * if two people try to take "sara" at the same moment, only one of them succeeds.
-     * When it works, the old username is released so someone else can use it.
-     */
-    private fun claimUsername(username: String, oldUsername: String, onDone: (Boolean) -> Unit) {
-        if (username == oldUsername) {
-            onDone(true)
-            return
-        }
-        Db.usernames().child(username.replace('.', ',')).runTransaction(object : Transaction.Handler {
-            override fun doTransaction(current: MutableData): Transaction.Result {
-                val owner = current.getValue(String::class.java)
-                if (owner != null && owner != myUid) return Transaction.abort()   // taken
-                current.value = myUid
-                return Transaction.success(current)
-            }
-
-            override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
-                if (committed && oldUsername.isNotEmpty()) Db.usernames().child(oldUsername.replace('.', ',')).removeValue()
-                onDone(committed)
-            }
-        })
-    }
-
-    /** While loading, uploading or saving, Save is faded and can't be pressed twice. */
+    /** While loading or saving, Save is faded and can't be pressed twice. */
     private fun setBusy(busy: Boolean) {
         binding.tvSave.isEnabled = !busy
         binding.tvSave.alpha = if (busy) 0.4f else 1f

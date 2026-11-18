@@ -12,26 +12,21 @@ import android.widget.RadioButton
 import android.widget.Spinner
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
-import com.google.firebase.FirebaseNetworkException
-import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
-import com.google.firebase.auth.FirebaseAuthUserCollisionException
-import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.rameen.i230806.R
-import com.rameen.i230806.data.Db
-import com.rameen.i230806.data.User
+import com.rameen.i230806.data.AuthRepo
 import com.rameen.i230806.databinding.ActivitySignUpBinding
 import com.rameen.i230806.ui.BaseActivity
 import com.rameen.i230806.util.RecentLogin
 import java.util.Calendar
-import java.util.Locale
 
 /**
- * 03 Sign up with Firebase Authentication.
+ * 03 Sign up with our PHP web service (Assignment 3).
  *
  *  1. The form is checked first (names, a real birthday, age 13+, gender, email, a Medium or
  *     Strong password, terms ticked). Problems are shown in a short message.
- *  2. Firebase creates the account (email + password) and gives it a uid.
- *  3. The profile is saved to users/{uid} in the Realtime Database.
+ *  2. auth/signup.php creates the account in MySQL (the password is stored only as a hash)
+ *     and answers with a session token, so the new user is logged in straight away.
+ *  3. AuthRepo saves the token (encrypted) and caches the profile in SQLite.
  *  4. The user goes on to Edit profile (step 3 of 3) to choose a username, bio and photo.
  *
  * The password strength bar updates on every key press (a TextWatcher).
@@ -181,46 +176,23 @@ class SignUpActivity : BaseActivity() {
         }
 
         setBusy(true)
-        // 2. Create the Firebase account.
-        Db.auth.createUserWithEmailAndPassword(email, password)
-            .addOnSuccessListener { result ->
-                val name = "$first $last"
-                val user = User(
-                    uid = result.user!!.uid,
-                    name = name,
-                    nameLower = name.lowercase(Locale.getDefault()),
-                    email = email,
-                    gender = genderButton!!.text.toString(),
-                    birthday = format(birthday!!),
-                    createdAt = Db.now(),
-                    online = true,
-                    setupDone = false,          // Edit profile finishes the setup
-                )
-                // 3. Save the profile to users/{uid}.
-                Db.user(user.uid).setValue(user)
-                    .addOnSuccessListener {
-                        Db.remember(user)
-                        RecentLogin.save(this, user)
-                        // 4. Edit profile (first time), with the login screens removed.
-                        openAfterLogin(user)
-                    }
-                    .addOnFailureListener {
-                        setBusy(false)
-                        toast(R.string.error_generic)
-                    }
-            }
-            .addOnFailureListener { error ->
+        // 2. + 3. Create the account on our server (email taken -> "An account with this email already exists").
+        AuthRepo.signUp(
+            name = "$first $last",
+            email = email,
+            password = password,
+            gender = genderButton!!.text.toString(),
+            birthday = format(birthday!!),
+        ) { user, error ->
+            if (user == null) {
                 setBusy(false)
-                toast(
-                    when (error) {
-                        is FirebaseAuthUserCollisionException -> R.string.signup_error_exists
-                        is FirebaseAuthWeakPasswordException -> R.string.signup_error_password
-                        is FirebaseAuthInvalidCredentialsException -> R.string.signup_error_email
-                        is FirebaseNetworkException -> R.string.error_network
-                        else -> R.string.error_generic
-                    }
-                )
+                toast(error ?: getString(R.string.error_generic))
+            } else {
+                RecentLogin.save(this, user)
+                // 4. Edit profile (first time), with the login screens removed.
+                openAfterLogin(user)
             }
+        }
     }
 
     /** The chosen date, or null if it doesn't exist (e.g. 31 Feb). */
@@ -256,7 +228,7 @@ class SignUpActivity : BaseActivity() {
         return "${birthday.get(Calendar.DAY_OF_MONTH)} $month ${birthday.get(Calendar.YEAR)}"
     }
 
-    /** While Firebase is working: button disabled and showing "Creating your account…". */
+    /** While the server is working: button disabled and showing "Creating your account…". */
     private fun setBusy(busy: Boolean) {
         binding.btnCreateAccount.isEnabled = !busy
         binding.btnCreateAccount.alpha = if (busy) 0.6f else 1f

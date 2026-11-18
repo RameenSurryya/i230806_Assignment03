@@ -4,7 +4,9 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import com.rameen.i230806.data.Db
+import com.rameen.i230806.data.AuthRepo
+import com.rameen.i230806.data.SessionStore
+import com.rameen.i230806.data.User
 import com.rameen.i230806.databinding.ActivitySplashBinding
 import com.rameen.i230806.ui.BaseActivity
 
@@ -13,8 +15,9 @@ import com.rameen.i230806.ui.BaseActivity
  *  - nobody logged in            -> Login
  *  - already logged in           -> Home (or Edit profile if the profile was never set up)
  *
- * Firebase remembers the logged-in user on the phone, so Db.auth.currentUser is still set after
- * the app is closed and opened again: that is what "stay logged in" means here.
+ * Assignment 3: "logged in" means the encrypted SessionStore holds a token from our server.
+ * The decision uses only what is on the phone (token + profile cached in SQLite), so it works
+ * offline too: Home then shows the cached posts and messages.
  */
 class SplashActivity : BaseActivity() {
 
@@ -32,22 +35,15 @@ class SplashActivity : BaseActivity() {
     }
 
     private fun moveOn() {
-        val uid = Db.uid
-        if (uid == null) {
+        if (!SessionStore.isLoggedIn) {
             openLogin()
             return
         }
-        // Logged in: read the profile to know if the first-time setup was finished.
-        Db.getUser(uid) { user ->
-            if (isFinishing) return@getUser
-            if (user == null) {
-                // The account exists but its profile is missing: start over at Login.
-                Db.auth.signOut()
-                openLogin()
-            } else {
-                openAfterLogin(user)
-            }
-        }
+        // My profile from SQLite; if it isn't cached, a stand-in with just the id is enough to
+        // choose between Home and Edit profile.
+        val me = AuthRepo.cachedMe()
+            ?: User(uid = SessionStore.userId.toString(), setupDone = SessionStore.setupDone)
+        openAfterLogin(me)
     }
 
     /** Login replaces Splash, so Back on Login leaves the app instead of returning here. */

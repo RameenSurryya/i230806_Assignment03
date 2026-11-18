@@ -8,6 +8,7 @@
     <string name="login_error_profile">Your account was found but its profile is missing. Please sign up again.</string>
     <string name="login_reset_need_email">Type your email above first, then tap Forgot password.</string>
     <string name="login_reset_sent">We sent a password reset link to %1$s.</string>
+    <string name="login_reset_unavailable">Password reset by email isn\'t available yet. Please contact support.</string>
     <string name="login_forget_recent">Removed from this device</string>
     <string name="cd_forget_recent">Remove this account from recent logins</string>
 

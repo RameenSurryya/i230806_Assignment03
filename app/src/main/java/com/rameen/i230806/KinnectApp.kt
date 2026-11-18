@@ -5,17 +5,11 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Bundle
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ServerValue
-import com.google.firebase.database.ValueEventListener
 import com.rameen.i230806.data.Api
 import com.rameen.i230806.data.Db
 import com.rameen.i230806.data.LocalDb
 import com.rameen.i230806.data.NetworkMonitor
+import com.rameen.i230806.data.Presence
 import com.rameen.i230806.data.SyncWorker
 import com.rameen.i230806.data.SessionStore
 
@@ -25,20 +19,17 @@ import com.rameen.i230806.data.SessionStore
  *
  *  1. Creates the notification channels (Android 8+ needs one per kind of notification).
  *  2. Keeps Db.now() in sync with Firebase's clock.
- *  3. Online / offline status ("Active now", green dots):
+ *  3. Online / offline status ("Active now", green dots), Assignment 3:
  *     - online while at least one Kinnect screen is visible, offline when the app goes to the
- *       background (counted with ActivityLifecycleCallbacks);
- *     - if the app is killed or loses internet, Firebase's server itself sets online = false
- *       (onDisconnect), because the phone can no longer do it.
+ *       background (counted with ActivityLifecycleCallbacks, sent by Presence);
+ *     - if the app is killed or loses internet, the heartbeats stop and our server shows the
+ *       user offline after 2 minutes on its own.
+ *  4. Assignment 3 set-up: session, web services, SQLite, network monitor, offline queue.
  */
 class KinnectApp : Application() {
 
     /** How many Kinnect screens are currently on screen (started but not stopped). */
     private var visibleScreens = 0
-
-    /** Firebase's special ".info/connected" path: true while this phone is connected. */
-    private var connectedRef: DatabaseReference? = null
-    private var connectedListener: ValueEventListener? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -50,53 +41,21 @@ class KinnectApp : Application() {
         createNotificationChannels()
         Db.watchServerTime()
 
-        // Runs now, and again every time someone logs in or out.
-        FirebaseAuth.getInstance().addAuthStateListener { auth ->
-            stopPresence()
-            val uid = auth.currentUser?.uid
-            if (uid != null) startPresence(uid)
-        }
-
         registerActivityLifecycleCallbacks(ScreenCounter())
-    }
-
-    /** Called whenever this phone (re)connects to Firebase while [uid] is logged in. */
-    private fun startPresence(uid: String) {
-        val ref = FirebaseDatabase.getInstance().getReference(".info/connected")
-        val listener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.getValue(Boolean::class.java) != true) return
-                // Tell the server what to write if this connection drops (app killed, no network).
-                val me = Db.user(uid)
-                me.child("online").onDisconnect().setValue(false)
-                me.child("lastSeen").onDisconnect().setValue(ServerValue.TIMESTAMP)
-                // Connected again: we are online if a screen is showing.
-                if (visibleScreens > 0) Db.setOnline(true)
-            }
-
-            override fun onCancelled(error: DatabaseError) {}
-        }
-        ref.addValueEventListener(listener)
-        connectedRef = ref
-        connectedListener = listener
-    }
-
-    private fun stopPresence() {
-        connectedListener?.let { connectedRef?.removeEventListener(it) }
-        connectedRef = null
-        connectedListener = null
     }
 
     /** Online when the first screen appears, offline when the last one disappears. */
     private inner class ScreenCounter : ActivityLifecycleCallbacks {
         override fun onActivityStarted(activity: Activity) {
             visibleScreens++
-            if (visibleScreens == 1) Db.setOnline(true)
+            // Every time (not only for the first screen): Home opening right after login must
+            // start the heartbeat too. Presence ignores repeated calls.
+            Presence.appVisible()
         }
 
         override fun onActivityStopped(activity: Activity) {
             visibleScreens--
-            if (visibleScreens == 0) Db.setOnline(false)
+            if (visibleScreens == 0) Presence.appHidden()
         }
 
         override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
