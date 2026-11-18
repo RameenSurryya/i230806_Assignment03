@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android blocks plain http:// by default. Our XAMPP server on the laptop has no HTTPS
+     certificate, so plain http is allowed ONLY for these addresses; everything else
+     (Firebase, Agora, Google) still has to use HTTPS. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">192.168.100.68</domain> <!-- the laptop on Wi-Fi -->
+        <domain includeSubdomains="false">10.0.2.2</domain>       <!-- the laptop, seen from the emulator -->
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

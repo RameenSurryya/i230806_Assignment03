@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Assignment 3: where the PHP web services run (XAMPP on the laptop, same Wi-Fi as the phones).
+     If the laptop's IP changes, change it here AND in res/xml/network_security_config.xml. -->
+<resources>
+    <string name="server_url" translatable="false">http://192.168.100.68/kinnect/</string>
+</resources>
