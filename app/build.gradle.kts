@@ -59,7 +59,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)       // accounts: sign up, log in, log out
     implementation(libs.firebase.database)   // Realtime Database: users, posts, chats ...
-    implementation(libs.firebase.messaging)  // push notifications (FCM)
+    implementation(libs.firebase.messaging)  // push notifications (FCM): still used in Assignment 3
 
     // CameraX: camera screen (09) for stories
     implementation(libs.androidx.camera.core)
@@ -70,6 +70,13 @@ dependencies {
 
     // Agora: voice and video calls
     implementation(libs.agora.rtc)
+
+    // Assignment 3: PHP web services + SQLite instead of Firebase Auth / Realtime Database.
+    // (firebase-auth and firebase-database stay until every screen is moved over, then go.)
+    implementation(libs.volley)                     // HTTP requests to the PHP endpoints
+    implementation(libs.glide)                      // photos from the server by URL
+    implementation(libs.androidx.work.runtime)      // background sync of offline actions
+    implementation(libs.androidx.security.crypto)   // encrypted session token
 
     testImplementation(libs.junit)
     // Espresso UI tests (app/src/androidTest)
