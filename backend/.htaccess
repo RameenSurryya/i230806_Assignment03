@@ -1,0 +1,5 @@
+# Kinnect API (Apache, XAMPP)
+# Pass the "Authorization: Bearer <token>" header on to PHP.
+SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+# No folder listings.
+Options -Indexes

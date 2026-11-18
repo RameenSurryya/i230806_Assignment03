@@ -25,3 +25,9 @@ app/google-services.json
 app/src/main/assets/service-account.json
 # Agora App Certificate, used by AgoraToken to make call tokens (Step 7c)
 app/src/main/assets/agora-certificate.txt
+
+# Assignment 3 backend: database password, server keys, uploaded files
+backend/config/config.php
+backend/secrets/
+backend/uploads/*
+!backend/uploads/.htaccess
