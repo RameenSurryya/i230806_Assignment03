@@ -12,6 +12,7 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
+import com.rameen.i230806.data.Api
 import com.rameen.i230806.data.Db
 import com.rameen.i230806.data.SessionStore
 
@@ -39,6 +40,7 @@ class KinnectApp : Application() {
     override fun onCreate() {
         super.onCreate()
         SessionStore.init(this)       // Assignment 3: the encrypted session token
+        Api.init(this)                // Assignment 3: Volley requests to the PHP web services
         createNotificationChannels()
         Db.watchServerTime()
 
