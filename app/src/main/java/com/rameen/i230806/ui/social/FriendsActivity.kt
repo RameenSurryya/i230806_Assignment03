@@ -13,6 +13,7 @@ import com.rameen.i230806.R
 import com.rameen.i230806.data.Cached
 import com.rameen.i230806.data.FriendRepo
 import com.rameen.i230806.data.Json
+import com.rameen.i230806.data.LocalDb
 import com.rameen.i230806.data.User
 import com.rameen.i230806.databinding.ActivityFriendsBinding
 import com.rameen.i230806.databinding.ItemFriendCardBinding
@@ -117,7 +118,20 @@ class FriendsActivity : BaseActivity() {
             fill(requests, json, "requests", "time")
             fill(suggestions, json, "suggestions", "time")
             fill(friendRows, json, "friends", "since")
+            saveFriends(json)
             showLists()
+        }
+    }
+
+    /** My friends and requests in SQLite's friends table (user id -> friends / received). */
+    private fun saveFriends(json: JSONObject) {
+        LocalDb.replaceAll(LocalDb.FRIENDS, null, null) {
+            for ((list, status) in listOf("friends" to "friends", "requests" to "received")) {
+                for (item in Json.objects(json.optJSONArray(list))) {
+                    val user = Json.saveUser(item.getJSONObject("user"))
+                    LocalDb.put(LocalDb.FRIENDS, "user_id", user.uid, item, mapOf("status" to status))
+                }
+            }
         }
     }
 

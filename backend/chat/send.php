@@ -4,7 +4,7 @@
 //         text, post_id (type post), reply_to_id (optional).
 // File:   media (image, video or any allowed file) for types image / video / file.
 // Sent with an X-Request-Id: a repeat from the offline queue returns the same message.
-// Answer: {message}. (Step 8 adds the push notification to the receiver from here.)
+// Answer: {message}. The receiver gets a push (also for screenshot alerts).
 declare(strict_types=1);
 require_once __DIR__ . '/../lib/chat.php';
 require_once __DIR__ . '/../lib/push.php';
@@ -44,6 +44,6 @@ once($me, function () use ($me, $to, $type, $text, $postId, $replyTo) {
     );
     $message = row('SELECT * FROM messages WHERE id = ?', [(int) db()->lastInsertId()]);
     touch_member($chatId, $me, ['read_at' => $now, 'typing_until' => 0]);   // I've seen my own chat
-    if ($type !== 'system') push_new_message($me, $to, $message);
+    push_new_message($me, $to, $message);   // system lines too: "Aisha took a screenshot" is a required alert
     return ['message' => messages_json([$message])[0]];
 });

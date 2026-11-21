@@ -418,12 +418,13 @@ class ChatActivity : BaseActivity() {
                     reload()
                 }
                 MENU_EDIT -> editMessage(message)
-                MENU_DELETE -> ChatRepo.delete(message) { error ->
+                MENU_DELETE -> ChatRepo.delete(this, message) { error ->
                     if (isDestroyed) return@delete
                     if (error != null) toast(error)   // e.g. "only within 5 minutes" from the server
                     reload()
                 }
             }
+            reload()   // the change shows at once
             true
         }
         popup.show()
@@ -446,12 +447,13 @@ class ChatActivity : BaseActivity() {
             .setPositiveButton(R.string.chat_edit_save) { _, _ ->
                 val newText = field.text.toString().trim()
                 if (newText.isNotEmpty() && newText != message.text) {
-                    ChatRepo.edit(message, newText) { error ->
+                    ChatRepo.edit(this, message, newText) { error ->
                         if (isDestroyed) return@edit
                         if (error != null) toast(error)   // the server refuses after 5 minutes
                         reload()
                     }
                 }
+                reload()   // shows "Edited" at once ("Sending..." while offline)
             }
             .setNegativeButton(R.string.chat_edit_cancel, null)
             .show()

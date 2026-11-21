@@ -172,25 +172,57 @@ object ChatRepo {
         message.senderId == me && !message.deleted && !message.pending && message.type != MsgType.SYSTEM &&
             now() - message.timestamp <= EDIT_WINDOW_MS
 
-    /** Changes the text of my message. The server checks the 5 minutes; [onDone] gets its error. */
-    fun edit(message: Message, newText: String, onDone: (error: String?) -> Unit) {
-        Api.post("chat/edit.php", JSONObject().put("id", message.id.toLong()).put("text", newText)) { result ->
-            result.json?.optJSONObject("message")?.takeIf { result.ok }?.let { Json.saveMessage(it) }
-            onDone(if (result.ok) null else result.error)
+    /**
+     * Changes the text of my message. Shown at once ("Edited", "Sending..."), then sent through
+     * the Outbox, so it also works offline. The SERVER checks the 5 minutes when it arrives:
+     * if it is too late, the change is refused and the old text comes back. [onDone] gets the
+     * server's error, or null when it was accepted or queued.
+     */
+    fun edit(context: Context, message: Message, newText: String, onDone: (error: String?) -> Unit) {
+        change(context, message, "chat/edit.php", JSONObject().put("text", newText), onDone) { json ->
+            json.put("text", newText).put("edited", true)
         }
     }
 
-    /** Deletes my message for everyone ("Message deleted"). A pending one just leaves the queue. */
-    fun delete(message: Message, onDone: (error: String?) -> Unit) {
+    /** Deletes my message for everyone ("Message deleted"), the same way as [edit]. */
+    fun delete(context: Context, message: Message, onDone: (error: String?) -> Unit) {
         if (isLocal(message.id)) {
+            // Never sent: just take it back out of the queue.
             LocalDb.delete(LocalDb.MESSAGES, "id = ?", arrayOf(message.id))
             LocalDb.removePending(message.id.removePrefix("local-"))
             onDone(null)
             return
         }
-        Api.post("chat/delete.php", JSONObject().put("id", message.id.toLong())) { result ->
-            result.json?.optJSONObject("message")?.takeIf { result.ok }?.let { Json.saveMessage(it) }
-            onDone(if (result.ok) null else result.error)
+        change(context, message, "chat/delete.php", JSONObject(), onDone) { json ->
+            json.put("deleted", true).put("text", "").put("media_url", JSONObject.NULL)
+        }
+    }
+
+    /** Edit / delete: change SQLite now (pending), queue the request, undo if the server refuses. */
+    private fun change(
+        context: Context,
+        message: Message,
+        path: String,
+        body: JSONObject,
+        onDone: (String?) -> Unit,
+        local: (JSONObject) -> Unit,
+    ) {
+        val original = LocalDb.get(LocalDb.MESSAGES, "id", message.id) ?: return onDone(null)
+        val changed = JSONObject(original.toString())
+        local(changed)
+        Json.saveMessage(changed.put("pending", true))
+        Outbox.send(context, "message_change", path, body.put("id", message.id.toLong())) { result ->
+            when {
+                result == null -> onDone(null)                                   // queued (offline)
+                result.ok -> {
+                    result.json?.optJSONObject("message")?.let { Json.saveMessage(it) }
+                    onDone(null)
+                }
+                else -> {
+                    Json.saveMessage(original)                                   // refused: undo
+                    onDone(result.error)
+                }
+            }
         }
     }
 
