@@ -2,6 +2,8 @@ package com.rameen.i230806.ui.home
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.PopupMenu
 import androidx.activity.addCallback
@@ -19,7 +21,9 @@ import com.rameen.i230806.util.Times
 
 /**
  * 12 Your story: your own stories from the last 24 hours, played by StoryPlayer.
- *  - Live from stories/{me}: "Seen by" and the floating reactions update while you watch.
+ *  - Assignment 3: from SQLite at once, then stories/feed.php every 10 seconds while the
+ *    screen shows, so "Seen by" and the floating reactions update while you watch.
+ *    A story shared offline plays from the phone until it has been uploaded.
  *  - "Seen by N": the newest viewers' avatars; tap for the full list (with their reactions).
  *  - Create: another story (Camera). More: delete this story.
  *  - X / Back / the end of the last story: back to Home, skipping the camera and the editor.
@@ -33,6 +37,14 @@ class YourStoryActivity : BaseActivity() {
     /** The newest copy of each story (viewers and reactions change while watching). */
     private val latest = HashMap<String, Story>()
     private var started = false
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val poll = object : Runnable {
+        override fun run() {
+            StoryRepo.refreshAll { if (!isDestroyed) showStories() }
+            handler.postDelayed(this, REFRESH_MS)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,28 +72,42 @@ class YourStoryActivity : BaseActivity() {
             onFinished = { closeToHome() },
         )
 
-        watch(Db.stories(myUid)) { snapshot ->
-            val now = Db.now()
-            val stories = snapshot.children
-                .mapNotNull { it.getValue(Story::class.java)?.apply { id = it.key ?: id; authorId = myUid } }
-                .filter { it.expiresAt > now }
-                .sortedBy { it.timestamp }
-            latest.clear()
-            stories.forEach { latest[it.id] = it }
+        // My stories from the phone straight away (a story shared a moment ago is there too).
+        showStories()
+    }
 
+    /** Starts playing the first time; afterwards only refreshes Seen by and the reactions. */
+    private fun showStories() {
+        val stories = StoryRepo.cachedOf(myUid)
+        latest.clear()
+        stories.forEach { latest[it.id] = it }
+
+        if (!started) {
+            if (stories.isEmpty()) return   // wait for the server's answer
+            started = true
+            player.start(stories)
+        } else {
+            // Same story still playing: just refresh "Seen by" and the reactions.
+            player.current?.let { current -> latest[current.id]?.let { showDetails(it) } }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        StoryRepo.refreshAll {
+            if (isDestroyed) return@refreshAll
+            showStories()
             if (!started) {
-                if (stories.isEmpty()) {
-                    toast(R.string.story_none)
-                    closeToHome()
-                    return@watch
-                }
-                started = true
-                player.start(stories)
-            } else {
-                // Same story still playing: just refresh "Seen by" and the reactions.
-                player.current?.let { current -> latest[current.id]?.let { showDetails(it) } }
+                toast(R.string.story_none)
+                closeToHome()
             }
         }
+        handler.postDelayed(poll, REFRESH_MS)
+    }
+
+    override fun onStop() {
+        handler.removeCallbacks(poll)
+        super.onStop()
     }
 
     override fun onPause() {
@@ -95,6 +121,7 @@ class YourStoryActivity : BaseActivity() {
     }
 
     override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
         player.release()
         super.onDestroy()
     }
@@ -170,7 +197,7 @@ class YourStoryActivity : BaseActivity() {
         val popup = PopupMenu(this, anchor)
         popup.menu.add(R.string.story_delete)
         popup.setOnMenuItemClickListener {
-            StoryRepo.delete(story)
+            StoryRepo.delete(this, story)
             toast(R.string.story_deleted)
             player.removeCurrent()
             true
@@ -183,6 +210,10 @@ class YourStoryActivity : BaseActivity() {
      * Closing returns to Home. CLEAR_TOP closes every screen above Home (camera, story
      * editor); SINGLE_TOP reuses the Home that is already open.
      */
+    private companion object {
+        const val REFRESH_MS = 10_000L
+    }
+
     private fun closeToHome() {
         startActivity(
             Intent(this, HomeActivity::class.java)

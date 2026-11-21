@@ -121,4 +121,39 @@ object Json {
         )
         return comment(j)
     }
+
+    // ---------------------------------------------------------------------------------------
+    // Stories (step 6)
+    // ---------------------------------------------------------------------------------------
+
+    /** A story from the server (or a pending local one, whose media is still a content:// address). */
+    fun story(j: JSONObject): Story {
+        val viewers = HashMap<String, Long>()
+        j.optJSONObject("viewers")?.let { v -> v.keys().forEach { viewers[it] = v.optLong(it) } }
+        val reactions = HashMap<String, String>()
+        j.optJSONObject("reactions")?.let { r -> r.keys().forEach { reactions[it] = r.optString(it) } }
+        return Story(
+            id = str(j, "id"),
+            authorId = j.optLong("author_id").toString(),
+            mediaId = str(j, "media_url"),          // a URL on our server
+            mediaType = str(j, "media_type").ifEmpty { MediaType.IMAGE },
+            label = str(j, "label"),
+            audience = str(j, "audience").ifEmpty { Audience.PUBLIC },
+            timestamp = j.optLong("created_at"),
+            expiresAt = j.optLong("expires_at"),
+            viewers = viewers,
+            reactions = reactions,
+        )
+    }
+
+    /** Keeps a story (and its author) in SQLite; expires_at lets the phone drop it after 24 h. */
+    fun saveStory(j: JSONObject): Story {
+        j.optJSONObject("author")?.let { saveUser(it) }
+        LocalDb.put(
+            LocalDb.STORIES, "id", str(j, "id"), j,
+            mapOf("user_id" to j.optLong("author_id").toString(), "created_at" to j.optLong("created_at"),
+                "expires_at" to j.optLong("expires_at")),
+        )
+        return story(j)
+    }
 }

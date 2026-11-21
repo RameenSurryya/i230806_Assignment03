@@ -9,12 +9,8 @@ import android.widget.ImageView
 import android.widget.PopupMenu
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.ValueEventListener
 import com.rameen.i230806.R
 import com.rameen.i230806.data.AuthRepo
-import com.rameen.i230806.data.Audience
 import com.rameen.i230806.data.Db
 import com.rameen.i230806.data.Extra
 import com.rameen.i230806.data.MediaType
@@ -23,6 +19,7 @@ import com.rameen.i230806.data.PickMode
 import com.rameen.i230806.data.Post
 import com.rameen.i230806.data.PostRepo
 import com.rameen.i230806.data.Story
+import com.rameen.i230806.data.StoryRepo
 import com.rameen.i230806.data.User
 import com.rameen.i230806.databinding.ActivityHomeBinding
 import com.rameen.i230806.databinding.ItemPostBinding
@@ -41,9 +38,10 @@ import com.rameen.i230806.util.Images
  *    offline), refreshes from the server every time it shows, and again after the sync worker
  *    has sent queued actions. Posts written offline appear with "Waiting to send...".
  *    A post card is item_post.xml, filled by PostViews.
- *  - Stories row: everyone (me + friends) with a story that hasn't expired (24 hours) and that
- *    I'm allowed to see (close-friends stories only if they added me to their close friends).
- *    A teal ring means there is a story I haven't watched yet; those people come first.
+ *  - Stories row (Assignment 3, stories/feed.php + SQLite): me and my friends with a story
+ *    that hasn't expired (24 hours). The server only sends close-friends stories to people in
+ *    the author's close friends. A teal ring means there is a story I haven't watched yet;
+ *    those people come first.
  *
  * Clicks: composer -> Create post (the image icon goes straight to the photo picker), your
  * avatar -> Profile, Create story -> Camera, a story card -> Story viewer (yours -> Your story),
@@ -55,18 +53,13 @@ class HomeActivity : BaseActivity() {
     private lateinit var binding: ActivityHomeBinding
 
     private var me: User? = null
-    private var friendUids: Set<String> = emptySet()
     private var allPosts: List<Post> = emptyList()
-    private var allStories: Map<String, List<Story>> = emptyMap()   // author -> their stories
 
     private val feed = mutableListOf<Post>()
     private val feedAdapter = FeedAdapter()
 
     /** Posts hidden with X or "Hide post" (until the app is closed). */
     private val hiddenPosts = mutableSetOf<String>()
-
-    /** closeFriends/{author}/{me}, read once per author: may I see their close-friends stories? */
-    private val closeTo = HashMap<String, Boolean>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,18 +93,10 @@ class HomeActivity : BaseActivity() {
                 lastSync = time
                 reloadFeed()
                 refreshFeed()
+                refreshStories()
             }
         }
 
-        // Stories are still read from Firebase until step 6 moves them to the server.
-        watch(Db.allStories()) { snapshot ->
-            allStories = snapshot.children.associate { author ->
-                (author.key ?: "") to author.children.mapNotNull {
-                    it.getValue(Story::class.java)?.apply { id = it.key ?: id; authorId = author.key ?: authorId }
-                }
-            }
-            showStories()
-        }
     }
 
     override fun onStart() {
@@ -119,6 +104,13 @@ class HomeActivity : BaseActivity() {
         AuthRepo.me { user -> if (user != null && !isDestroyed) showMe(user) }
         reloadFeed()
         refreshFeed()
+        showStories()
+        refreshStories()
+    }
+
+    /** New stories from the server; the row is redrawn from SQLite. */
+    private fun refreshStories() {
+        StoryRepo.refreshAll { ok -> if (ok && !isDestroyed) showStories() }
     }
 
     /** Draws the feed from SQLite (instant, also offline). */
@@ -209,40 +201,12 @@ class HomeActivity : BaseActivity() {
     // Stories row
     // ---------------------------------------------------------------------------------------
 
-    /** The stories of [author] I may see right now (not expired; close friends only if allowed). */
-    private fun visibleStories(author: String): List<Story> {
-        val now = Db.now()
-        return allStories[author].orEmpty().filter { story ->
-            story.expiresAt > now &&
-                (story.audience != Audience.CLOSE_FRIENDS || author == myUid || closeTo[author] == true)
-        }
-    }
-
     private fun showStories() {
-        val authors = (listOf(myUid) + friendUids).filter { allStories.containsKey(it) }
-
-        // Close-friends stories need one check per author: closeFriends/{author}/{me}.
-        val unchecked = authors.filter { author ->
-            author != myUid && author !in closeTo &&
-                allStories[author].orEmpty().any { it.audience == Audience.CLOSE_FRIENDS }
-        }
-        for (author in unchecked) {
-            Db.closeFriends(author).child(myUid).addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    closeTo[author] = snapshot.exists()
-                    showStories()
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    closeTo[author] = false
-                }
-            })
-        }
+        // Not expired, already filtered by the server (close friends), grouped by author.
+        val byAuthor = StoryRepo.cachedAll().groupBy { it.authorId }
 
         // Mine first, then people with unwatched stories, then newest.
-        val rows = authors
-            .map { it to visibleStories(it) }
-            .filter { it.second.isNotEmpty() }
+        val rows = byAuthor.entries.map { it.key to it.value }
             .sortedWith(
                 compareByDescending<Pair<String, List<Story>>> { it.first == myUid }
                     .thenByDescending { (_, stories) -> stories.any { !it.viewers.containsKey(myUid) } }

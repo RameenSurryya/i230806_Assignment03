@@ -77,7 +77,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : Worker(context, p
         LocalDb.removePending(action.uuid)
         files.forEach { File(it.getString("path")).delete() }
         action.localId?.let { id ->
-            for (table in listOf(LocalDb.MESSAGES, LocalDb.POSTS, LocalDb.COMMENTS)) {
+            for (table in listOf(LocalDb.MESSAGES, LocalDb.POSTS, LocalDb.COMMENTS, LocalDb.STORIES)) {
                 LocalDb.delete(table, "id = ?", arrayOf(id))
             }
         }

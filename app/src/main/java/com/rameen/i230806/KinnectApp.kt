@@ -36,6 +36,7 @@ class KinnectApp : Application() {
         SessionStore.init(this)       // Assignment 3: the encrypted session token
         Api.init(this)                // Assignment 3: Volley requests to the PHP web services
         LocalDb.init(this)            // Assignment 3: SQLite cache + offline queue
+        LocalDb.deleteExpiredStories() // Assignment 3: stories older than 24 h leave the phone too
         NetworkMonitor.init(this)     // Assignment 3: online / offline, restarts the sync on reconnect
         SyncWorker.schedule(this)     // Assignment 3: send anything still queued from last time
         createNotificationChannels()

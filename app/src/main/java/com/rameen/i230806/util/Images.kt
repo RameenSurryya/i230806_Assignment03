@@ -213,7 +213,9 @@ object Images {
     fun loadVideo(context: Context, mediaId: String, onReady: (File?) -> Unit) {
         // Assignment 3: a video URL on our server is downloaded once into the cache folder,
         // so it plays smoothly and still plays offline later.
-        if (mediaId.startsWith("http")) {
+        // A video still on the phone (a story shared offline, not uploaded yet) is the same,
+        // but copied from the phone's own storage.
+        if (mediaId.startsWith("http") || mediaId.startsWith("content:") || mediaId.startsWith("file:")) {
             val cachedFile = File(context.cacheDir, "video_${mediaId.hashCode()}.mp4")
             if (cachedFile.exists() && cachedFile.length() > 0) {
                 onReady(cachedFile)
@@ -221,7 +223,10 @@ object Images {
             }
             background.execute {
                 val ok = try {
-                    URL(mediaId).openStream().use { input -> cachedFile.outputStream().use { input.copyTo(it) } }
+                    val input =
+                        if (mediaId.startsWith("http")) URL(mediaId).openStream()
+                        else context.contentResolver.openInputStream(android.net.Uri.parse(mediaId))
+                    input!!.use { stream -> cachedFile.outputStream().use { stream.copyTo(it) } }
                     true
                 } catch (e: Exception) {
                     cachedFile.delete()

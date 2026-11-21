@@ -20,7 +20,8 @@ import com.rameen.i230806.util.Times
 
 /**
  * 11 Story viewer: someone's stories (Extra.UID), oldest first, played by StoryPlayer.
- *  - Each story shown is marked as seen (StoryRepo.markViewed), so it moves to "seen" on Home
+ *  - Loaded from stories/feed.php (Assignment 3; SQLite copy when offline).
+ *  - Each story shown is marked as seen (StoryRepo.markViewed -> stories/view.php), so it moves to "seen" on Home
  *    and the author sees you in "Seen by".
  *  - Like / Love / Haha react to the story (the author gets a notification).
  *  - The message box sends a reply to the author's chat. While typing, the story pauses.
@@ -105,8 +106,8 @@ class StoryViewerActivity : BaseActivity() {
     }
 
     private fun showStory(story: Story) {
-        StoryRepo.markViewed(story)
-        binding.tvTime.text = Times.ago(this, story.timestamp)
+        StoryRepo.markViewed(this, story)
+        binding.tvTime.text = Times.ago(this, story.timestamp)   // (sent with the story)
         val close = story.audience == Audience.CLOSE_FRIENDS
         binding.ivAudience.setImageResource(if (close) R.drawable.ic_star else R.drawable.ic_globe)
         binding.ivAudience.contentDescription =
@@ -117,7 +118,7 @@ class StoryViewerActivity : BaseActivity() {
 
     private fun react(reaction: Reaction) {
         val story = player.current ?: return
-        StoryRepo.react(story, reaction)
+        StoryRepo.react(this, story, reaction)
         toast(R.string.story_reacted)
     }
 

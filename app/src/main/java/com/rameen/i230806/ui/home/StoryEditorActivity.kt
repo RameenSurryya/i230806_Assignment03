@@ -17,15 +17,14 @@ import com.rameen.i230806.data.StoryRepo
 import com.rameen.i230806.databinding.ActivityStoryEditorBinding
 import com.rameen.i230806.ui.BaseActivity
 import com.rameen.i230806.util.Avatars
-import com.rameen.i230806.util.Images
 import java.util.concurrent.Executors
 
 /**
  * 10 Story editor: the photo or video from the Camera (Extra.MEDIA_URI + Extra.MEDIA_TYPE).
  *  - "Aa" (or tapping the sticker) types the text sticker shown on the story.
  *  - "Your story" / the arrow: share with everyone. "Close friends": share only with them.
- *    Sharing uploads the photo / video to media/ and saves stories/{me}/{id}
- *    (StoryRepo.add), then opens Your story.
+ *    Sharing (Assignment 3): StoryRepo.add saves it on the phone and uploads the photo / video
+ *    to stories/create.php (offline it waits in the queue), then Your story opens.
  *  - X / Back: back to the camera without sharing.
  */
 class StoryEditorActivity : BaseActivity() {
@@ -146,30 +145,22 @@ class StoryEditorActivity : BaseActivity() {
         setSharing(true)
         toast(R.string.editor_sharing)
 
-        val onUploaded: (String?) -> Unit = { mediaId ->
-            if (mediaId == null) {
-                failed()
-            } else {
-                StoryRepo.add(mediaId, mediaType, label, audience) { saved ->
-                    if (!saved) {
-                        failed()
-                    } else {
-                        toast(if (audience == Audience.CLOSE_FRIENDS) R.string.editor_shared_close else R.string.editor_shared)
-                        // Your story's X / Back return to Home past the camera and this screen.
-                        openScreen(YourStoryActivity::class.java)
-                        finish()
-                    }
-                }
+        StoryRepo.add(this, mediaUri, mediaType, label, audience) { saved, error ->
+            if (isDestroyed) return@add
+            if (!saved) {
+                failed(error)
+                return@add
             }
+            toast(if (audience == Audience.CLOSE_FRIENDS) R.string.editor_shared_close else R.string.editor_shared)
+            // Your story's X / Back return to Home past the camera and this screen.
+            openScreen(YourStoryActivity::class.java)
+            finish()
         }
-        if (mediaType == MediaType.VIDEO) Images.uploadVideo(this, mediaUri, onUploaded)
-        else Images.uploadImage(this, mediaUri, onUploaded)
     }
 
-    private fun failed() {
-        if (isDestroyed) return
+    private fun failed(error: String?) {
         setSharing(false)
-        toast(R.string.editor_error)
+        toast(error ?: getString(R.string.editor_error))
     }
 
     /** While uploading, the share buttons are faded and can't be pressed again. */
