@@ -49,3 +49,27 @@
 - [x] Step 10 README and docs updated
 
 - [ ] Full feature test on two devices
+
+## Assignment 3 (PHP web services + MySQL + SQLite)
+
+- [x] Step 1 Repo, XAMPP, schema (19 tables), PHP foundation (db, api, uploads, health)
+
+- [x] Step 2 Android foundation: Volley Api, SessionStore, LocalDb, Outbox + SyncWorker, NetworkMonitor
+
+- [x] Step 3 Accounts: sign up, login, splash offline, edit profile, logout, presence heartbeat
+
+- [x] Step 4 Friends, profiles, search filters, notifications, badges
+
+- [x] Step 5 Posts, reactions, comments with offline pending items
+
+- [x] Step 6 Stories with 24 h expiry on server and SQLite
+
+- [x] Step 7 Chat: media and file messages, 5-minute edit / delete on the server, typing, seen
+
+- [x] Step 8 FCM push sent from PHP
+
+- [x] Step 9 Calls through PHP, server Agora token, call log
+
+- [x] Step 10 Marketplace, Espresso tests, README, Firebase Auth / Database removed
+
+- [ ] Full feature test on two devices

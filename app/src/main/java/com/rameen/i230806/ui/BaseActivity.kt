@@ -18,10 +18,6 @@ import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.widget.ImageViewCompat
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.Query
-import com.google.firebase.database.ValueEventListener
 import com.rameen.i230806.R
 import com.rameen.i230806.data.Api
 import com.rameen.i230806.data.Db
@@ -46,7 +42,7 @@ import com.rameen.i230806.ui.social.NotificationsActivity
  *  4. Badges: the red number on messenger (chats with unread messages) and on the bell
  *     (unread notifications), asked from our server (badges.php) when the screen shows and
  *     every 20 seconds while it stays visible.
- *  5. watch(): listens to a database path only while the screen is visible.
+ *  5. Badges refresh only while the screen is visible (onStart / onStop).
  *  6. Small helpers: back arrows, opening screens, toasts.
  *
  * Usage in a tab screen:
@@ -200,53 +196,16 @@ abstract class BaseActivity : AppCompatActivity() {
     }
 
     // ---------------------------------------------------------------------------------------
-    // 5. Database listeners that follow the screen's lifecycle
+    // 5. Badges follow the screen's lifecycle
     // ---------------------------------------------------------------------------------------
-
-    /** One registered listener: the path it listens to and what to do on each change. */
-    protected class Watch(val query: Query, val listener: ValueEventListener)
-
-    private val watches = mutableListOf<Watch>()
-    private var isVisibleNow = false
-
-    /**
-     * Listens to [query] while this screen is visible: [onChange] runs with the current data and
-     * again after every change (from any phone). The listener is detached in onStop and attached
-     * again in onStart, so hidden screens don't keep downloading.
-     *
-     * Example: watch(Db.user(uid)) { snapshot -> showUser(snapshot.getValue(User::class.java)) }
-     */
-    protected fun watch(query: Query, onChange: (DataSnapshot) -> Unit): Watch {
-        val listener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) = onChange(snapshot)
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.w(TAG, "Listener cancelled: ${error.message}")
-            }
-        }
-        val watch = Watch(query, listener)
-        watches.add(watch)
-        if (isVisibleNow) query.addValueEventListener(listener)
-        return watch
-    }
-
-    /** Stops one listener for good, e.g. Search drops the old query when the user types more. */
-    protected fun stopWatching(watch: Watch) {
-        if (isVisibleNow) watch.query.removeEventListener(watch.listener)
-        watches.remove(watch)
-    }
 
     override fun onStart() {
         super.onStart()
-        isVisibleNow = true
-        watches.forEach { it.query.addValueEventListener(it.listener) }
         badgeHandler.post(badgeTick)
     }
 
     override fun onStop() {
-        watches.forEach { it.query.removeEventListener(it.listener) }
         badgeHandler.removeCallbacks(badgeTick)
-        isVisibleNow = false
         super.onStop()
     }
 

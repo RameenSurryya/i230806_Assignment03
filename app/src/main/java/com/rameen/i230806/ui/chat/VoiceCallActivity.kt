@@ -2,12 +2,9 @@ package com.rameen.i230806.ui.chat
 
 import android.os.Bundle
 import android.view.View
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.ValueEventListener
 import com.rameen.i230806.R
+import com.rameen.i230806.data.Cached
 import com.rameen.i230806.data.CallType
-import com.rameen.i230806.data.Db
 import com.rameen.i230806.data.User
 import com.rameen.i230806.databinding.ActivityVoiceCallBinding
 import com.rameen.i230806.util.Avatars
@@ -50,14 +47,11 @@ class VoiceCallActivity : CallActivityBase() {
     override fun showPerson(user: User) {
         binding.tvCallName.text = user.name
         Avatars.bind(binding.tvCallAvatar, binding.ivCallAvatarPhoto, user)
-        // The love heart after the name: only for people in my close friends list.
-        Db.closeFriends(myUid).child(user.uid).addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                binding.ivCallHeart.visibility = if (snapshot.exists()) View.VISIBLE else View.GONE
-            }
-
-            override fun onCancelled(error: DatabaseError) {}
-        })
+        // The love heart after the name: only for people in my close friends list
+        // (users/profile.php answers "close": true for them).
+        Cached.get("users/profile.php", mapOf("id" to user.uid)) { json ->
+            if (!isDestroyed) binding.ivCallHeart.visibility = if (json.optBoolean("close")) View.VISIBLE else View.GONE
+        }
     }
 
     override fun showStatus(text: String) {

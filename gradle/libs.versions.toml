@@ -37,8 +37,6 @@ androidx-constraintlayout = { group = "androidx.constraintlayout", name = "const
 androidx-recyclerview = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
 # Firebase: no versions here, they come from firebase-bom
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
-firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
-firebase-database = { group = "com.google.firebase", name = "firebase-database" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
 # CameraX: live camera preview, photos and short videos for stories (screen 09)
 androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }

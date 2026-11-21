@@ -1,4 +1,4 @@
-﻿package com.rameen.i230806
+package com.rameen.i230806
 
 import android.app.Activity
 import androidx.test.core.app.ActivityScenario
@@ -15,18 +15,18 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
-import com.google.firebase.auth.FirebaseAuth
+import com.rameen.i230806.data.SessionStore
 import com.rameen.i230806.ui.auth.LoginActivity
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Test 2 (back stack, with real Firebase login):
+ * Test 2 (back stack, with the real PHP login):
  * Login (type email + password) -> Home -> Menu -> Log out -> Login, then Back leaves the app,
- * and Firebase no longer has anyone logged in.
+ * and the phone no longer has a session token (SessionStore).
  */
 @RunWith(AndroidJUnit4::class)
 class LoginLogoutBackStackTest {
@@ -41,7 +41,7 @@ class LoginLogoutBackStackTest {
         // Step 1: start the app on the Login screen.
         ActivityScenario.launch(LoginActivity::class.java).use {
 
-            // Step 2: type the test account and tap "Log in"; Home appears once Firebase answers.
+            // Step 2: type the test account and tap "Log in"; Home appears once the server answers.
             onView(withId(R.id.et_email)).perform(replaceText(TestAccount.EMAIL))
             onView(withId(R.id.et_password)).perform(replaceText(TestAccount.PASSWORD))
             closeSoftKeyboard()
@@ -57,7 +57,7 @@ class LoginLogoutBackStackTest {
             // Step 4: the Login screen is showing again, and nobody is logged in.
             TestAccount.waitForView(withId(R.id.btn_login))
             onView(withId(R.id.btn_login)).check(matches(isDisplayed()))
-            assertNull("Firebase should have logged out", FirebaseAuth.getInstance().currentUser)
+            assertFalse("The session token should be gone", SessionStore.isLoggedIn)
 
             // Step 5: keep a reference to that new Login screen, so we can check it after Back.
             val login = resumedActivity()

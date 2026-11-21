@@ -1,4 +1,4 @@
-﻿package com.rameen.i230806
+package com.rameen.i230806
 
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.closeSoftKeyboard
@@ -15,18 +15,17 @@ import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.espresso.matcher.ViewMatchers.withParent
 import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.android.gms.tasks.Tasks
-import com.rameen.i230806.data.Db
+import com.rameen.i230806.data.Json
+import org.json.JSONObject
 import com.rameen.i230806.ui.home.HomeActivity
 import org.hamcrest.Matchers.allOf
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.util.concurrent.TimeUnit
 
 /**
- * Test 1 (multi-step flow, with the real backend):
+ * Test 1 (multi-step flow, with the real PHP backend):
  * Home -> Create post -> the new post appears in the feed -> Comment -> write a comment ->
  * it appears on the Comments screen -> Back -> Home.
  *
@@ -59,7 +58,7 @@ class HomeToCommentsTest {
             closeSoftKeyboard()
             onView(withId(R.id.btn_post)).perform(click())
 
-            // Step 3: back on Home, the new post shows up in the feed (live from Firebase).
+            // Step 3: back on Home, the new post shows up in the feed (from our server).
             TestAccount.waitForView(withText(postText))
 
             // Step 4: tap Comment on THAT post: the ll_comment inside the feed row
@@ -92,16 +91,13 @@ class HomeToCommentsTest {
     /** Deletes the test's posts (and their comments) so the feed doesn't fill up with them. */
     @After
     fun cleanUp() {
-        val mine = Tasks.await(Db.posts().orderByChild("authorId").equalTo(uid).get(), 20, TimeUnit.SECONDS)
-        val paths = HashMap<String, Any?>()
-        for (post in mine.children) {
-            val text = post.child("text").getValue(String::class.java).orEmpty()
-            if (text.startsWith(POST_PREFIX)) {
-                paths["posts/${post.key}"] = null
-                paths["comments/${post.key}"] = null
+        val answer = TestAccount.getNow("posts/feed.php", mapOf("author" to uid, "limit" to 100)) ?: return
+        for (post in Json.objects(answer.optJSONArray("posts"))) {
+            if (Json.str(post, "text").startsWith(POST_PREFIX)) {
+                // Deleting a post on the server deletes its comments too.
+                TestAccount.postNow("posts/delete.php", JSONObject().put("id", post.optLong("id")))
             }
         }
-        if (paths.isNotEmpty()) Tasks.await(Db.root.updateChildren(paths), 20, TimeUnit.SECONDS)
     }
 
     private companion object {

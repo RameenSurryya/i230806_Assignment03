@@ -3,7 +3,6 @@ package com.rameen.i230806.data
 import androidx.annotation.ColorRes
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
-import com.google.firebase.database.IgnoreExtraProperties
 import com.rameen.i230806.R
 
 /*
@@ -37,7 +36,6 @@ import com.rameen.i230806.R
  * keeps their ids, so loading the feed doesn't download every picture at once.
  */
 
-@IgnoreExtraProperties
 data class User(
     var uid: String = "",
     var name: String = "",
@@ -62,7 +60,6 @@ data class User(
     var fcmToken: String = "",        // this user's phone, for push notifications
 )
 
-@IgnoreExtraProperties
 data class Post(
     var id: String = "",
     var authorId: String = "",
@@ -75,7 +72,6 @@ data class Post(
     var pending: Boolean = false,                  // created offline, not sent to the server yet
 )
 
-@IgnoreExtraProperties
 data class Comment(
     var id: String = "",
     var postId: String = "",
@@ -88,7 +84,6 @@ data class Comment(
     var pending: Boolean = false,               // written offline, not sent to the server yet
 )
 
-@IgnoreExtraProperties
 data class Story(
     var id: String = "",
     var authorId: String = "",
@@ -102,7 +97,6 @@ data class Story(
     var reactions: Map<String, String> = emptyMap(), // uid -> reaction key
 )
 
-@IgnoreExtraProperties
 data class AppNotification(
     var id: String = "",
     var type: String = "",                      // NotifType
@@ -113,7 +107,6 @@ data class AppNotification(
     var read: Boolean = false,
 )
 
-@IgnoreExtraProperties
 data class ChatSummary(
     var chatId: String = "",
     var otherUid: String = "",
@@ -123,7 +116,6 @@ data class ChatSummary(
     var unread: Long = 0,                       // messages this user hasn't opened yet
 )
 
-@IgnoreExtraProperties
 data class Message(
     var id: String = "",
     var senderId: String = "",
@@ -144,7 +136,6 @@ data class Message(
     var pending: Boolean = false,               // written offline, not sent to the server yet
 )
 
-@IgnoreExtraProperties
 data class Call(
     var callId: String = "",
     var callerId: String = "",
@@ -155,7 +146,6 @@ data class Call(
     var timestamp: Long = 0,
 )
 
-@IgnoreExtraProperties
 data class CallLog(
     var callId: String = "",
     var otherUid: String = "",
@@ -166,7 +156,6 @@ data class CallLog(
     var durationSec: Long = 0,
 )
 
-@IgnoreExtraProperties
 data class Listing(
     var id: String = "",
     var title: String = "",

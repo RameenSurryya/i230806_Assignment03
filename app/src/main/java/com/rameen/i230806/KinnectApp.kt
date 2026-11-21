@@ -18,7 +18,7 @@ import com.rameen.i230806.data.SessionStore
  * with android:name=".KinnectApp"). It does three app-wide jobs:
  *
  *  1. Creates the notification channels (Android 8+ needs one per kind of notification).
- *  2. Keeps Db.now() in sync with Firebase's clock.
+ *  2. Db.now() follows the server's clock (Presence's heartbeat answers carry it).
  *  3. Online / offline status ("Active now", green dots), Assignment 3:
  *     - online while at least one Kinnect screen is visible, offline when the app goes to the
  *       background (counted with ActivityLifecycleCallbacks, sent by Presence);
@@ -40,7 +40,6 @@ class KinnectApp : Application() {
         NetworkMonitor.init(this)     // Assignment 3: online / offline, restarts the sync on reconnect
         SyncWorker.schedule(this)     // Assignment 3: send anything still queued from last time
         createNotificationChannels()
-        Db.watchServerTime()
 
         registerActivityLifecycleCallbacks(ScreenCounter())
     }

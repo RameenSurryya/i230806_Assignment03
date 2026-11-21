@@ -11,18 +11,23 @@ import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.rameen.i230806.R
-import com.rameen.i230806.data.Db
+import com.rameen.i230806.data.Cached
+import com.rameen.i230806.data.Json
+import com.rameen.i230806.data.Outbox
+import org.json.JSONObject
 import com.rameen.i230806.data.Listing
 import com.rameen.i230806.databinding.ActivityMarketplaceBinding
 import com.rameen.i230806.databinding.ItemListingBinding
 import com.rameen.i230806.ui.BaseActivity
 
 /**
- * 23 Marketplace: everything for sale, live from listings/, newest first, in two columns.
- *  - "JUST LISTED" on new items for their first 24 hours (and on two of the design's samples).
- *  - Sell: a small form (what, price, area) that adds a listing; everyone sees it at once.
- *  - The very first time the marketplace is empty, the four items from the design are added,
- *    so the screen is never blank on a fresh database.
+ * 23 Marketplace: everything for sale from market/list.php (Assignment 3), newest first, in
+ * two columns. The saved copy shows at once (works offline).
+ *  - "JUST LISTED" on new items for their first 24 hours (and on two of the design's samples),
+ *    decided by the server.
+ *  - Sell: a small form (what, price, area) that sends market/create.php; offline it waits in
+ *    the queue. It shows in the grid straight away.
+ *  - The first time the marketplace is empty, the server adds the four items from the design.
  *  - Categories, the location and tapping a product are visual only.
  */
 class MarketplaceActivity : BaseActivity() {
@@ -30,7 +35,6 @@ class MarketplaceActivity : BaseActivity() {
     private lateinit var binding: ActivityMarketplaceBinding
     private val listings = mutableListOf<Listing>()
     private val adapter = ListingAdapter()
-    private var seeded = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,16 +49,30 @@ class MarketplaceActivity : BaseActivity() {
         binding.rvListings.isNestedScrollingEnabled = false   // the page's ScrollView scrolls instead
         binding.llSell.setOnClickListener { showSellForm() }
 
-        // Oldest first from Firebase, so reversed for the screen.
-        watch(Db.listings().orderByChild("timestamp")) { snapshot ->
-            val list = snapshot.children
-                .mapNotNull { child -> child.getValue(Listing::class.java)?.apply { id = child.key ?: id } }
-                .reversed()
-            if (list.isEmpty()) addSampleListings()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        load()
+    }
+
+    private fun load() {
+        Cached.get("market/list.php") { json ->
+            if (isDestroyed) return@get
             listings.clear()
-            listings.addAll(list)
+            Json.objects(json.optJSONArray("listings")).mapTo(listings) { item ->
+                Listing(
+                    id = Json.str(item, "id"),
+                    title = Json.str(item, "title"),
+                    price = Json.str(item, "price"),
+                    place = Json.str(item, "place"),
+                    photo = Json.str(item, "photo"),
+                    justListed = item.optBoolean("just_listed"),
+                    timestamp = item.optLong("created_at"),
+                )
+            }
             adapter.notifyDataSetChanged()
-            binding.tvEmpty.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
+            binding.tvEmpty.visibility = if (listings.isEmpty()) View.VISIBLE else View.GONE
         }
     }
 
@@ -98,41 +116,19 @@ class MarketplaceActivity : BaseActivity() {
         setSingleLine()
     }
 
-    /** A new listing with a random placeholder photo (photos for listings aren't uploaded). */
-    private fun addListing(title: String, price: String, place: String) {
-        val ref = Db.listings().push()
-        ref.setValue(
-            Listing(
-                id = ref.key ?: "",
-                title = title,
-                price = price,
-                place = place,
-                photo = PHOTOS.random(),
-                justListed = true,
-                timestamp = Db.now(),
-            )
-        )
-    }
-
     /**
-     * The four items from the design, added once when there is nothing for sale. Fixed ids,
-     * so two phones doing this at the same time still make only four.
+     * A new listing with a random placeholder photo (photos for listings aren't uploaded).
+     * Shown at the top at once; sent now, or later from the offline queue.
      */
-    private fun addSampleListings() {
-        if (seeded) return
-        seeded = true
-        val now = Db.now()
-        val samples = listOf(
-            Listing("sample_bike", getString(R.string.market_title_bike), getString(R.string.market_price_bike),
-                getString(R.string.market_place_bike), "sage", true, now),
-            Listing("sample_chair", getString(R.string.market_title_chair), getString(R.string.market_price_chair),
-                getString(R.string.market_place_chair), "rose", false, now - 1),
-            Listing("sample_desk", getString(R.string.market_title_desk), getString(R.string.market_price_desk),
-                getString(R.string.market_place_desk), "sky", false, now - 2),
-            Listing("sample_pots", getString(R.string.market_title_pots), getString(R.string.market_price_pots),
-                getString(R.string.market_place_pots), "sand", true, now - 3),
-        )
-        samples.forEach { Db.listings().child(it.id).setValue(it) }
+    private fun addListing(title: String, price: String, place: String) {
+        val photo = PHOTOS.random()
+        listings.add(0, Listing("local", title, price, place, photo, true, System.currentTimeMillis()))
+        adapter.notifyDataSetChanged()
+        binding.tvEmpty.visibility = View.GONE
+        val body = JSONObject().put("title", title).put("price", price).put("place", place).put("photo", photo)
+        Outbox.send(this, "create_listing", "market/create.php", body) { result ->
+            if (result != null && result.ok && !isDestroyed) load()
+        }
     }
 
     // ---------------------------------------------------------------------------------------
@@ -163,10 +159,8 @@ class MarketplaceActivity : BaseActivity() {
             val tile = holder.tile
             tile.ivPhoto.setImageResource(photoFor(listing.photo))
             tile.ivPhoto.clipToOutline = true            // 12dp rounded corners (bg_photo_rounded)
-            // JUST LISTED: for a day after listing (the design's samples keep it).
-            val showLabel = listing.justListed &&
-                    (listing.id.startsWith("sample_") || Db.now() - listing.timestamp < DAY_MS)
-            tile.tvJustListed.visibility = if (showLabel) View.VISIBLE else View.GONE
+            // JUST LISTED: the server decides (a day after listing; two of the design's samples).
+            tile.tvJustListed.visibility = if (listing.justListed) View.VISIBLE else View.GONE
             tile.tvPrice.text = listing.price
             tile.tvTitle.text = listing.title
             tile.tvPlace.text = listing.place
@@ -175,7 +169,6 @@ class MarketplaceActivity : BaseActivity() {
     }
 
     private companion object {
-        const val DAY_MS = 24 * 60 * 60 * 1000L
         val PHOTOS = listOf("sand", "teal", "lilac", "sky", "sage", "rose", "night")
     }
 }

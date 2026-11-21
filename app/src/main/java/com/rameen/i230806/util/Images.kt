@@ -9,15 +9,8 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
-import android.util.Base64
-import android.util.LruCache
 import android.widget.ImageView
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.ValueEventListener
 import com.rameen.i230806.R
-import com.rameen.i230806.data.Db
-import com.rameen.i230806.data.MediaType
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.URL
@@ -25,17 +18,16 @@ import com.bumptech.glide.Glide
 import java.util.concurrent.Executors
 
 /**
- * Pictures and videos without Firebase Storage (which needs the paid plan).
+ * Pictures and videos (Assignment 3: files on our PHP server, uploads/...).
  *
- * Saving: the picture is shrunk (longest side 1080 px, JPEG quality 70, about 100-200 KB),
- * turned into text with Base64 and written to media/{id} in the Realtime Database. Posts, users
- * and messages only keep that id.
+ * Saving: photos are shrunk first (compress: longest side 1080 px, JPEG quality 70, about
+ * 100-200 KB) and uploaded with the post / message / story in one multipart request
+ * (Api.filePart).
  *
- * Showing: Images.load(imageView, mediaId) downloads the text once, turns it back into a
- * picture and keeps it in a memory cache, so scrolling back up doesn't download it again.
- *
- * The slow parts (shrinking, Base64) run on a background thread; results come back on the
- * main thread, so callers can touch views directly.
+ * Showing: posts, users and messages keep the file's URL. Images.load(imageView, url) uses
+ * Glide, which caches in memory and on disk, so a picture seen once still shows offline.
+ * A picture still on the phone (content:// or file://, waiting in the offline queue) shows the
+ * same way. Videos are downloaded once into the cache folder for VideoView (loadVideo).
  */
 object Images {
 
@@ -48,51 +40,9 @@ object Images {
     private val background = Executors.newFixedThreadPool(2)
     private val mainThread = Handler(Looper.getMainLooper())
 
-    /** Decoded pictures by media id, using at most 1/8 of the app's memory. */
-    private val cache = object : LruCache<String, Bitmap>((Runtime.getRuntime().maxMemory() / 1024 / 8).toInt()) {
-        override fun sizeOf(key: String, value: Bitmap) = value.byteCount / 1024
-    }
-
     // ---------------------------------------------------------------------------------------
     // Saving
     // ---------------------------------------------------------------------------------------
-
-    /**
-     * Shrinks the picture at [uri] (gallery or camera), saves it under media/ and passes the
-     * new media id to [onDone], or null if it failed.
-     */
-    fun uploadImage(context: Context, uri: Uri, onDone: (String?) -> Unit) {
-        val appContext = context.applicationContext
-        background.execute {
-            val jpeg = compress(appContext, uri)
-            if (jpeg == null) {
-                mainThread.post { onDone(null) }
-            } else {
-                save(Base64.encodeToString(jpeg, Base64.NO_WRAP), MediaType.IMAGE, onDone)
-            }
-        }
-    }
-
-    /**
-     * Saves the video at [uri] under media/ as it is (no re-encoding) and passes the media id
-     * to [onDone], or null if it failed or is bigger than [MAX_VIDEO_BYTES].
-     */
-    fun uploadVideo(context: Context, uri: Uri, onDone: (String?) -> Unit) {
-        val appContext = context.applicationContext
-        background.execute {
-            val bytes = try {
-                if (sizeOf(appContext, uri) > MAX_VIDEO_BYTES) null
-                else appContext.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            } catch (e: Exception) {
-                null
-            }
-            if (bytes == null) {
-                mainThread.post { onDone(null) }
-            } else {
-                save(Base64.encodeToString(bytes, Base64.NO_WRAP), MediaType.VIDEO, onDone)
-            }
-        }
-    }
 
     /** Size in bytes of the file at [uri] (0 if unknown). Used to refuse videos over 5 MB. */
     fun sizeOf(context: Context, uri: Uri): Long {
@@ -101,14 +51,6 @@ object Images {
             if (cursor.moveToFirst() && !cursor.isNull(0)) return cursor.getLong(0)
         }
         return 0
-    }
-
-    /** Writes { data, type, ownerId } to a new media/{id}. Firebase calls back on the main thread. */
-    private fun save(base64: String, type: String, onDone: (String?) -> Unit) {
-        val ref = Db.root.child("media").push()
-        val mediaId = ref.key
-        ref.setValue(mapOf("data" to base64, "type" to type, "ownerId" to Db.uid))
-            .addOnCompleteListener { task -> onDone(if (task.isSuccessful) mediaId else null) }
     }
 
     /**
@@ -152,8 +94,8 @@ object Images {
     // ---------------------------------------------------------------------------------------
 
     /**
-     * Shows media/[mediaId] in [view]. Safe in lists: if the row is reused for another item
-     * before the download finishes, the old picture is not put into it.
+     * Shows the picture at [mediaId] (a URL) in [view]. Safe in lists: Glide cancels the old
+     * request when a row is reused for another item.
      * An empty [mediaId] clears the view (or shows [placeholder] if given).
      */
     fun load(view: ImageView, mediaId: String?, placeholder: Int = 0) {
@@ -171,44 +113,13 @@ object Images {
             (if (placeholder != 0) request.placeholder(placeholder) else request).into(view)
             return
         }
-        val cached = cache.get(mediaId)
-        if (cached != null) {
-            view.setImageBitmap(cached)
-            return
-        }
+        // Anything else (an old Assignment 2 Firebase media id): not on this server.
         if (placeholder != 0) view.setImageResource(placeholder) else view.setImageDrawable(null)
-        getBitmap(mediaId) { bitmap ->
-            // Only if this view still wants the same picture.
-            if (bitmap != null && view.getTag(R.id.tag_media_id) == mediaId) view.setImageBitmap(bitmap)
-        }
-    }
-
-    /** Downloads and decodes media/[mediaId] (or takes it from the cache). */
-    fun getBitmap(mediaId: String, onLoaded: (Bitmap?) -> Unit) {
-        cache.get(mediaId)?.let { onLoaded(it); return }
-        readData(mediaId) { base64 ->
-            if (base64 == null) {
-                onLoaded(null)
-                return@readData
-            }
-            background.execute {
-                val bitmap = try {
-                    val bytes = Base64.decode(base64, Base64.DEFAULT)
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                } catch (e: Exception) {
-                    null
-                }
-                mainThread.post {
-                    if (bitmap != null) cache.put(mediaId, bitmap)
-                    onLoaded(bitmap)
-                }
-            }
-        }
     }
 
     /**
-     * Downloads the video media/[mediaId] into a temporary file that VideoView can play, and
-     * passes the file to [onReady] (null if it failed). Already-downloaded videos are reused.
+     * Copies the video at [mediaId] (a URL, or content:// for one still on the phone) into a
+     * cache file that VideoView can play, and passes it to [onReady] (null if it failed).
      */
     fun loadVideo(context: Context, mediaId: String, onReady: (File?) -> Unit) {
         // Assignment 3: a video URL on our server is downloaded once into the cache folder,
@@ -236,33 +147,6 @@ object Images {
             }
             return
         }
-        val file = File(context.cacheDir, "video_$mediaId.mp4")
-        if (file.exists() && file.length() > 0) {
-            onReady(file)
-            return
-        }
-        readData(mediaId) { base64 ->
-            if (base64 == null) {
-                onReady(null)
-                return@readData
-            }
-            background.execute {
-                val ok = try {
-                    file.writeBytes(Base64.decode(base64, Base64.DEFAULT))
-                    true
-                } catch (e: Exception) {
-                    false
-                }
-                mainThread.post { onReady(if (ok) file else null) }
-            }
-        }
-    }
-
-    /** Reads the Base64 text at media/{mediaId}/data once. */
-    private fun readData(mediaId: String, onRead: (String?) -> Unit) {
-        Db.media(mediaId).child("data").addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) = onRead(snapshot.getValue(String::class.java))
-            override fun onCancelled(error: DatabaseError) = onRead(null)
-        })
+        onReady(null)   // not a file we can reach
     }
 }

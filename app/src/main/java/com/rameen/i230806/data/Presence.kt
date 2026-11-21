@@ -47,6 +47,8 @@ object Presence {
     /** Skipped when logged out (Login screen) or offline; the next beat tries again. */
     private fun send(online: Boolean) {
         if (!SessionStore.isLoggedIn || !NetworkMonitor.isOnline) return
-        Api.post("auth/presence.php", JSONObject().put("online", online)) { }
+        Api.post("auth/presence.php", JSONObject().put("online", online)) { result ->
+            result.json?.optLong("time")?.let { Db.setServerTime(it) }   // keeps Db.now() right
+        }
     }
 }

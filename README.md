@@ -2,118 +2,129 @@
 
 Kinnect is a social networking app for Android (package `com.rameen.i230806`).
 Assignment 1 recreated the 23 screens of the design (`design/Kinnect_UI.pdf`); Assignment 2
-connects them to a **Firebase backend** so that every screen shows live, real data: accounts,
-friends, posts, comments, reactions, stories, notifications, chat, push notifications, voice
-and video calls, and a marketplace. Everything runs on Firebase's free **Spark** plan.
+connected them to Firebase. **Assignment 3 replaces Firebase Auth and the Realtime Database
+with our own PHP web services and a MySQL database**, adds an **SQLite offline cache** with a
+queue of actions that are sent automatically when the internet comes back, and keeps Firebase
+Cloud Messaging only to deliver push notifications, which the PHP server now sends.
 
-## Setup (secret files are not in the repository)
+## Setup
 
-Three files hold keys, so they are listed in `.gitignore` and must be added by hand:
+### 1. Server (XAMPP: Apache + PHP 8 + MySQL/MariaDB)
+
+1. Put the `backend/` folder where Apache serves it, e.g. a junction
+   `E:\xampp\htdocs\kinnect -> E:\kinnect\backend` (base path `/kinnect`).
+2. Create the database `kinnect` and a MySQL user `kinnect` with a password, then the tables:
+   `mysql -u root kinnect < backend/schema.sql` (19 tables).
+3. Copy `backend/config/config.example.php` to `backend/config/config.php` and fill in the
+   database password and the Agora App ID.
+4. Put the server's secret files in `backend/secrets/`:
 
 | File | Where it comes from | Used for |
 |---|---|---|
-| `app/google-services.json` | Firebase console → Project settings → Your apps → download | Connecting the app to the Firebase project |
-| `app/src/main/assets/service-account.json` | Firebase console → Project settings → Service accounts → Generate new private key | Sending push notifications (FCM HTTP v1) |
-| `app/src/main/assets/agora-certificate.txt` | Agora console → project → Primary Certificate (32 characters) | Making Agora call tokens |
+| `service-account.json` | Firebase console → Project settings → Service accounts → Generate new private key | Sending push notifications (FCM HTTP v1) |
+| `agora-certificate.txt` | Agora console → project → Primary Certificate (32 characters) | Making Agora call tokens |
+| `cacert.pem` | https://curl.se/ca/cacert.pem | Trusted certificates for PHP's HTTPS calls to Google (XAMPP has none) |
 
-Also needed:
+5. Check it: open `http://<laptop IP>/kinnect/health.php` on the phone.
 
-- Firebase **Authentication** with Email/Password enabled, and a **Realtime Database**
-  (region asia-southeast1) with the rules from `database.rules.json` published.
-- The Agora **App ID** in `app/src/main/res/values/agora.xml`.
+### 2. App
 
-Without `service-account.json` the app still works but sends no pushes; without the Agora
-files calls show a message instead of connecting.
+- `app/google-services.json` (Firebase console → Your apps), only for receiving pushes.
+- `app/src/main/res/values/server.xml`: the server address, e.g. `http://192.168.100.68/kinnect/`.
+  `res/xml/network_security_config.xml` allows plain HTTP only to that address and the emulator.
+- `app/src/main/res/values/agora.xml`: the Agora App ID (the same as in `config.php`).
+
+**Not in Git** (`.gitignore`): `google-services.json`, `backend/config/config.php` (database
+password), `backend/secrets/*` (service account, Agora certificate) and `backend/uploads/*`.
 
 ## Build and run
-
-Android Studio (recent stable) with Android SDK 37, min SDK 26. Open the folder, wait for
-Gradle sync and run the `app` configuration, or from PowerShell:
 
 ```
 .\gradlew.bat assembleDebug        # APK in app\build\outputs\apk\debug\
 .\gradlew.bat installDebug         # install on the running emulator or phone
 ```
 
-Push notifications need an emulator image with Google Play. Calls need two devices.
+The phone and the laptop must be on the same Wi-Fi. Calls need two devices.
 
 ## Features
 
 | Area | What works |
 |---|---|
-| Accounts | Sign up with password strength meter, login with a "recent login" card, password reset email, 5-second splash that skips login when already signed in, first-time profile setup, log out that clears the back stack |
-| Profiles | Edit profile (name, unique username, bio, website, work, study, city, profile and cover photo), own profile, other people's profiles with mutual friends and their photos |
-| Friends | Send / cancel / accept / decline requests, unfriend, close friends, suggestions, search by name or username |
-| Feed | Text and photo posts (up to 10 photos), six reactions with the reaction picker, comments with replies, likes and photo comments, sharing a post into a chat |
-| Stories | CameraX photo and 15-second video, gallery pick, text sticker, public or close-friends audience, 24-hour expiry, viewer with progress bar, seen-by list, reactions and replies |
-| Notifications | Friend requests, accepted requests, reactions, comments, replies, comment likes, story reactions; New / Earlier sections, unread badge on the bell |
-| Chat | Live chats list with unread dots and online status, messages, photos, shared posts, replies, love reactions, edit and delete within 5 minutes, typing indicator, seen receipt, screenshot alert |
-| Push | Notifications for new messages and incoming calls, even when the app is closed |
-| Calls | Voice and video calls with Agora: ringing, answer / decline, mute, speaker, camera flip / off, call timer, call lines in the chat and call logs |
-| Marketplace | Live listings in a two-column grid, Sell form, sample items added on a fresh database |
+| Accounts | Sign up (password strength meter), login with a recent-login card, 5-second splash that opens Home **even offline** when a session token is saved, first-time profile setup, log out that invalidates the token on the server, marks the user offline, clears SQLite and the back stack |
+| Profiles | Edit profile (name, unique username checked by the server, bio, details, profile and cover photo uploaded to the server), own and other profiles with mutual friends and photos |
+| Friends | Send / cancel / accept / decline requests, unfriend, close friends, suggestions; search with **Everyone / Friends / Requests** filters |
+| Feed | Text and photo posts (up to 10 photos), six reactions, comments with replies, likes and photo comments, share to chat; **posts and comments written offline show "Waiting to send…" and are sent later** |
+| Stories | Photo or video, text sticker, public or close friends; **expire after 24 hours on the server and in SQLite**; seen-by list and reactions |
+| Notifications | Friend requests, reactions, comments, replies, comment likes, story reactions, with a push for each |
+| Chat | Text, **photos, videos and files**, shared posts, replies, love reactions, typing, seen, screenshot alert; **edit / delete within 5 minutes, enforced by the server**; offline messages are queued |
+| Presence | Online while the app is open (heartbeat every minute), offline in the background or 2 minutes after the last heartbeat |
+| Push | New messages, incoming calls and notifications, **sent from PHP** through FCM |
+| Calls | Voice and video with Agora; ringing, answer, decline, end and the **call log** go through PHP; the Agora token is made on the server |
+| Marketplace | Listings from the server, Sell form (works offline) |
 
 ## How it works
 
-### Package structure
+### Server: `backend/`
 
 ```
-app/src/main/java/com/rameen/i230806/
-  KinnectApp.kt         app start: notification channels, server clock, online / offline status
-  data/                 Models.kt (every stored class), Db.kt (every database path),
-                        FriendRepo, PostRepo, StoryRepo, ChatRepo, CallRepo
-  push/                 PushSender (sends pushes), KinnectMessagingService (receives them)
-  util/                 Images (Base64 photos and videos), Avatars, Times, RecentLogin
-  ui/BaseActivity.kt    shared parent: system bars, tabs, top bar, live badges, watch()
-  ui/auth/ ui/home/ ui/social/ ui/profile/ ui/chat/ ui/market/   one Activity per screen
-app/src/androidTest/    the two Espresso tests and their TestAccount helper
-database.rules.json     the Realtime Database security rules (same as in the console)
+lib/        db.php (PDO), api.php (JSON answers, login token, once()), upload.php (files),
+            users, friends, posts, stories, chat, calls, agora (tokens), push (FCM)
+auth/       signup, login, logout, me, presence, fcm_token
+profile/    update (fields + photo + cover)
+users/      profile          friends/   action, lists          search.php
+posts/      feed, get, create, delete, react, share        comments/  list, add, like, delete
+stories/    feed, create, view, react, delete              notifications/  list, read, delete
+chat/       list, messages, send, edit, delete, react, read, typing
+calls/      start, status, answer, decline, end, log       market/   list, create
+badges.php  health.php  schema.sql
 ```
 
-### Database (Firebase Realtime Database)
+- Every answer is JSON: `{"ok": true, ...}` or `{"ok": false, "error": "..."}` with an HTTP code.
+- Every query uses PDO prepared statements.
+- **Login token:** login returns a random 64-character token. The app sends it as
+  `Authorization: Bearer ...`, and the server stores only its SHA-256 hash (table `sessions`).
+  Logging out revokes it.
+- **No duplicates:** actions from the offline queue carry a UUID in `X-Request-Id`. `once()`
+  runs the action and saves its answer in `processed_requests` in one transaction, so a repeat
+  returns the saved answer and does nothing twice.
+- **Server rules:**
+  - the 5-minute edit and delete limit for messages;
+  - the 24-hour story expiry, which also deletes the files;
+  - close-friends stories go only to the author's close friends;
+  - usernames are unique;
+  - you can only delete your own posts, comments and stories.
+- **Files:** uploads go in `uploads/<folder>/` under random names, with type and size checks
+  (25 MB). PHP is not executed in that folder.
+
+### App: `app/src/main/java/com/rameen/i230806/`
 
 ```
-users/{uid}                     profile, online status, push token
-usernames/{username}            uid (makes usernames unique, claimed with a transaction)
-friendRequests/{to}/{from}      time        friends/{uid}/{friendUid}   time (both sides)
-closeFriends/{uid}/{friendUid}  true
-posts/{postId}                  post with reactions        comments/{postId}/{commentId}
-stories/{uid}/{storyId}         story with viewers and reactions, expiresAt = +24 h
-media/{mediaId}                 Base64 photo or video
-notifications/{uid}/{id}        rows of the Notifications screen
-userChats/{uid}/{chatId}        one row per conversation (last message, unread count)
-messages/{chatId}/{msgId}       typing/{chatId}/{uid}      chatReads/{chatId}/{uid}
-calls/{calleeUid}               the call ringing now        callLogs/{uid}/{callId}
-listings/{id}                   marketplace items
+data/   Api (Volley), SessionStore (encrypted token), LocalDb (SQLite), Outbox + SyncWorker
+        (offline queue), NetworkMonitor, Cached (saved answer first, then the server), Json,
+        AuthRepo, FriendRepo, PostRepo, StoryRepo, ChatRepo, CallRepo, Presence, Db, Models
+push/   PushSender (sends this phone's FCM token), KinnectMessagingService (shows pushes)
+util/   Images (Glide, photo compression), Avatars, Times, RecentLogin
+ui/     one Activity per screen (auth, home, social, profile, chat, market)
 ```
 
-### Key decisions
-
-- **Free plan only.** Firebase Storage and Cloud Functions need the paid Blaze plan, so:
-  - photos are compressed (longest side 1080 px, JPEG 70) and stored as Base64 text under
-    `media/`; posts and messages keep only the media id, so lists don't download every picture;
-  - story videos are recorded at SD quality and limited to 15 seconds and 5 MB;
-  - push notifications are sent by the app itself through the FCM HTTP v1 API, signing a
-    Google access token with the service-account key (`PushSender`);
-  - Agora call tokens are made in the app from the App Certificate (`AgoraToken`).
-  A real product would move the two keys to a server; for this project they stay out of Git.
-- **Live screens.** `BaseActivity.watch()` attaches database listeners in `onStart` and removes
-  them in `onStop`, so hidden screens stop downloading. Lists use RecyclerView adapters.
-- **Consistent writes.** Actions that touch several places (sending a message updates the
-  message and both chat rows; accepting a request updates both friend lists) use one
-  multi-path `updateChildren`, so the database is never half-updated. Counters use
-  `ServerValue.increment`.
-- **Server time.** `Db.now()` uses Firebase's clock offset, so the 5-minute edit window and the
-  24-hour stories work the same on every phone.
-- **Security rules.** Each person can only change their own data; chats are readable only by
-  the two people in them; the 5-minute edit limit is also enforced by the rules
-  (`database.rules.json`).
-- **Design.** The Assignment 1 layouts, tokens, fonts and icons are kept; new screens (video
-  call, incoming call, share to chat) reuse the same styles. Design notes are in `docs/`.
+- **SQLite first:** every screen shows its saved copy at once, so it also works offline, and
+  then asks the server. Lists and profiles are cached by `Cached`, while posts, comments,
+  stories, chats and users have their own tables in `LocalDb`.
+- **Offline writes:**
+  1. `Outbox.send` sends straight away when online.
+  2. Otherwise the action goes into `pending_actions` with a UUID and copies of its files.
+  3. `SyncWorker` (WorkManager, needs a network) sends the queue in order when the internet
+     returns. `NetworkMonitor` also restarts it on reconnect.
+  4. Items made offline get a local id (`local-<uuid>`) and show as pending until the server's
+     copy replaces them.
+- **Live data:** the open Chat screen asks the server every 2 seconds for what changed since
+  its last answer. Chats asks every 5 seconds, badges every 20 seconds, and calls every
+  1.5 seconds.
 
 ### Libraries
 
-Firebase BoM 34.19.0 (Auth, Realtime Database, Cloud Messaging), CameraX 1.6.2, Agora RTC
-full SDK 4.6.4, AndroidX RecyclerView, AppCompat, Material, Espresso.
+Volley 1.2.1, Glide 4.16.0, WorkManager 2.10.0, AndroidX Security Crypto 1.1.0, Firebase
+Cloud Messaging (BoM 34.19.0), CameraX 1.6.2, Agora RTC 4.6.4, RecyclerView, Material, Espresso.
 
 ## Espresso tests
 
@@ -121,15 +132,14 @@ full SDK 4.6.4, AndroidX RecyclerView, AppCompat, Material, Espresso.
 .\gradlew.bat connectedDebugAndroidTest
 ```
 
-Both tests use a real test account (`espresso.tester@kinnect.app`, created on the first run)
-and wait for Firebase before checking the screen.
+Both tests use a real account on the server (`espresso.tester@kinnect.app`, created on the
+first run), so XAMPP must be running and reachable from the device.
 
 - `HomeToCommentsTest`: Home → Create post → the post appears in the feed → Comment → write a
   comment → it appears → Back → Home. The test post is deleted afterwards.
 - `LoginLogoutBackStackTest`: type email and password → Home → Menu → Log out → Login; Back
-  closes the app and nobody is logged in.
+  closes the app and no session token is left.
 
 ## tools/ scripts
 
-Python scripts used in Assignment 1 to measure the design PNGs (colours, sizes, radii, fonts,
-placeholders). They are not part of the app; see the comments at the top of each script.
+Python scripts used in Assignment 1 to measure the design PNGs. They are not part of the app.

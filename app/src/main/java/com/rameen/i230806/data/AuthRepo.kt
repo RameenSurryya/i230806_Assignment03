@@ -66,6 +66,7 @@ object AuthRepo {
                 finished = true
                 WorkManager.getInstance(app).cancelAllWork()
                 LocalDb.clearAll()
+                Db.clearCache()
                 SessionStore.clear()
                 onDone()
             }

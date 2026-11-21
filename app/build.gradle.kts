@@ -57,8 +57,6 @@ dependencies {
 
     // Firebase: the BoM sets the versions, the libraries below use them.
     implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)       // accounts: sign up, log in, log out
-    implementation(libs.firebase.database)   // Realtime Database: users, posts, chats ...
     implementation(libs.firebase.messaging)  // push notifications (FCM): still used in Assignment 3
 
     // CameraX: camera screen (09) for stories
@@ -72,7 +70,7 @@ dependencies {
     implementation(libs.agora.rtc)
 
     // Assignment 3: PHP web services + SQLite instead of Firebase Auth / Realtime Database.
-    // (firebase-auth and firebase-database stay until every screen is moved over, then go.)
+    // Firebase Auth and the Realtime Database were removed: accounts and data are on our PHP server.
     implementation(libs.volley)                     // HTTP requests to the PHP endpoints
     implementation(libs.glide)                      // photos from the server by URL
     implementation(libs.androidx.work.runtime)      // background sync of offline actions

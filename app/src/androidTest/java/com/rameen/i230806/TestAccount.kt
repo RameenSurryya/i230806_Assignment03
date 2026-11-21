@@ -1,23 +1,28 @@
-﻿package com.rameen.i230806
+package com.rameen.i230806
 
 import android.view.View
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.Visibility
 import androidx.test.espresso.matcher.ViewMatchers.withEffectiveVisibility
-import com.google.android.gms.tasks.Tasks
-import com.google.firebase.auth.FirebaseAuth
-import com.rameen.i230806.data.Db
+import androidx.test.platform.app.InstrumentationRegistry
+import com.rameen.i230806.data.Api
+import com.rameen.i230806.data.AuthRepo
+import com.rameen.i230806.data.SessionStore
 import org.hamcrest.Matcher
+import org.json.JSONObject
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /**
- * Shared helpers for the Espresso tests.
+ * Shared helpers for the Espresso tests (Assignment 3: our PHP server, not Firebase).
  *
- * The app now talks to Firebase, so the tests use a real account. The first run creates it
- * (with a finished profile, so login goes straight to Home); later runs just log in.
+ * The tests use a real account on the server. The first run signs it up (and finishes its
+ * profile, so login goes straight to Home); later runs just log in. The phone or emulator
+ * must reach the server (res/values/server.xml) with XAMPP running.
  *
- * Firebase answers over the network, and Espresso doesn't know to wait for it, so
+ * AuthRepo answers on the main thread; the test thread waits for it with a CountDownLatch.
+ * The server answers over the network and Espresso doesn't know to wait for it, so
  * [waitForView] checks again every quarter second until the view appears (or gives up).
  */
 object TestAccount {
@@ -27,36 +32,47 @@ object TestAccount {
     private const val NAME = "Espresso Tester"
     private const val TIMEOUT_SECONDS = 20L
 
-    /** Logs the test account in (creating it the first time) and returns its uid. */
+    private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
+
+    /** Runs [work] on the main thread and waits until it calls done(). */
+    private fun await(work: (done: () -> Unit) -> Unit) {
+        val latch = CountDownLatch(1)
+        InstrumentationRegistry.getInstrumentation().runOnMainSync { work { latch.countDown() } }
+        check(latch.await(TIMEOUT_SECONDS, TimeUnit.SECONDS)) { "The server did not answer in time" }
+    }
+
+    /** Logs the test account in (signing it up the first time) and returns its id. */
     fun signIn(): String {
-        val auth = FirebaseAuth.getInstance()
-        val result = try {
-            Tasks.await(auth.signInWithEmailAndPassword(EMAIL, PASSWORD), TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        } catch (e: Exception) {
+        var error: String? = null
+        await { done -> AuthRepo.logIn(EMAIL, PASSWORD) { user, e -> if (user == null) error = e; done() } }
+        if (!SessionStore.isLoggedIn) {
             // First run: the account doesn't exist yet.
-            Tasks.await(auth.createUserWithEmailAndPassword(EMAIL, PASSWORD), TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            await { done -> AuthRepo.signUp(NAME, EMAIL, PASSWORD, "Female", "2000-01-01") { user, e -> if (user == null) error = e; done() } }
         }
-        val uid = result.user!!.uid
+        check(SessionStore.isLoggedIn) { "Could not log in the test account: $error" }
         // A finished profile, so AfterLogin opens Home instead of the first-time Edit profile.
-        Tasks.await(
-            Db.user(uid).updateChildren(
-                mapOf(
-                    "uid" to uid,
-                    "name" to NAME,
-                    "nameLower" to NAME.lowercase(),
-                    "email" to EMAIL,
-                    "setupDone" to true,
-                )
-            ),
-            TIMEOUT_SECONDS, TimeUnit.SECONDS,
-        )
-        return uid
+        if (!SessionStore.setupDone) {
+            await { done -> AuthRepo.updateProfile(context, mapOf("name" to NAME), null, null) { _, _ -> done() } }
+        }
+        return SessionStore.userId.toString()
     }
 
     /** Makes sure the account exists, then logs out, so a test can start on the Login screen. */
     fun ensureExistsAndSignOut() {
         signIn()
-        FirebaseAuth.getInstance().signOut()
+        await { done -> AuthRepo.logOut(context) { done() } }
+    }
+
+    /** GET [path] and wait for the answer (null when it failed). */
+    fun getNow(path: String, params: Map<String, Any?>): JSONObject? {
+        var answer: JSONObject? = null
+        await { done -> Api.get(path, params) { result -> if (result.ok) answer = result.json; done() } }
+        return answer
+    }
+
+    /** POST [body] to [path] and wait for the answer. */
+    fun postNow(path: String, body: JSONObject) {
+        await { done -> Api.post(path, body) { done() } }
     }
 
     /** Waits until a view matching [matcher] is on screen (data may still be loading). */
