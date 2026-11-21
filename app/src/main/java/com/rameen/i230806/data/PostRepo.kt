@@ -276,11 +276,11 @@ object PostRepo {
 
     /** Deletes my comment (and its replies) and lowers the post's comment count. */
     fun deleteComment(context: Context, comment: Comment) {
-        val removed = LocalDb.list(
-            LocalDb.COMMENTS, "id = ? OR json LIKE ?", arrayOf(comment.id, "%\"parent_id\":${comment.id}%"),
-        ).size.coerceAtLeast(1)
+        // Its replies are the comments whose parent is this one (checked on the parsed JSON).
+        val replies = cachedComments(comment.postId).filter { it.parentId == comment.id }
         LocalDb.delete(LocalDb.COMMENTS, "id = ?", arrayOf(comment.id))
-        LocalDb.delete(LocalDb.COMMENTS, "json LIKE ?", arrayOf("%\"parent_id\":${comment.id}%"))
+        replies.forEach { LocalDb.delete(LocalDb.COMMENTS, "id = ?", arrayOf(it.id)) }
+        val removed = 1 + replies.size
         editPost(comment.postId) { it.put("comment_count", maxOf(0, it.optLong("comment_count") - removed)) }
         if (isLocal(comment.id)) {
             LocalDb.removePending(comment.id.removePrefix("local-"))

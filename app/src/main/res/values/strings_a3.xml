@@ -25,4 +25,7 @@
     <string name="preview_video">Video</string>
     <string name="preview_file">File: %1$s</string>
 
+    <!-- Edit profile, first-time setup -->
+    <string name="edit_error_bio">Add a short bio to finish setting up your profile.</string>
+
 </resources>

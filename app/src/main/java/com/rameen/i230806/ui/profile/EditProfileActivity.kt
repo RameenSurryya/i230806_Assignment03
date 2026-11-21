@@ -189,6 +189,11 @@ class EditProfileActivity : BaseActivity() {
             toast(R.string.edit_error_username)
             return
         }
+        // First-time setup: a username AND a short bio before reaching Home (Assignment 3).
+        if (firstTime && binding.etBio.text.toString().isBlank()) {
+            toast(R.string.edit_error_bio)
+            return
+        }
 
         // Only the fields the server should change; email and gender are shown, not edited.
         val fields = mapOf(
