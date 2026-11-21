@@ -61,8 +61,12 @@ object Db {
      * The id of the conversation between two people. Both phones compute the same id because
      * the two uids are always put in alphabetical order: chatId("b", "a") == chatId("a", "b") == "a_b".
      */
-    fun chatId(uidA: String, uidB: String): String =
-        if (uidA < uidB) "${uidA}_$uidB" else "${uidB}_$uidA"
+    fun chatId(uidA: String, uidB: String): String {
+        // Assignment 3: ids are numbers, compared as numbers ("9" before "10"), like the server's chat_id().
+        val a = uidA.toLongOrNull() ?: 0
+        val b = uidB.toLongOrNull() ?: 0
+        return if (a < b) "${a}_$b" else "${b}_$a"
+    }
 
     // ---------------------------------------------------------------------------------------
     // Server time

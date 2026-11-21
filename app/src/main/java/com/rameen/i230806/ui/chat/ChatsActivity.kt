@@ -6,6 +6,8 @@ import android.content.pm.PackageManager
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -17,7 +19,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.rameen.i230806.R
 import com.rameen.i230806.data.ChatSummary
-import com.rameen.i230806.data.Db
+import com.rameen.i230806.data.Cached
+import com.rameen.i230806.data.Json
 import com.rameen.i230806.data.Extra
 import com.rameen.i230806.data.User
 import com.rameen.i230806.databinding.ActivityChatsBinding
@@ -30,10 +33,11 @@ import com.rameen.i230806.util.Avatars
 import com.rameen.i230806.util.Times
 
 /**
- * 20 Chats: every conversation, newest first, live from userChats/{me}.
+ * 20 Chats: every conversation, newest first, from chat/list.php (Assignment 3).
+ *  - The saved copy shows at once (works offline); refreshed every 5 seconds while visible.
  *  - Each row: avatar (green dot when they're online), name, last message ("You: ..." for
  *    mine) and time. Unread chats have a bold name and the teal dot.
- *  - Notes row: friends who are online right now; tap one to chat.
+ *  - Notes row: friends who are online right now (active in the last 2 minutes); tap to chat.
  *  - The search field filters the rows by name. Compose opens Search; People opens Friends.
  *  - Android 13+: asks once for permission to show notifications (new messages and calls).
  */
@@ -50,7 +54,15 @@ class ChatsActivity : BaseActivity() {
     private val adapter = ChatAdapter()
 
     private var onlineUids: Set<String> = emptySet()
-    private var friendUids: Set<String> = emptySet()
+    private val onlineFriends = mutableListOf<User>()
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val poll = object : Runnable {
+        override fun run() {
+            load()
+            handler.postDelayed(this, POLL_MS)
+        }
+    }
 
     /** Android 13+ notification permission; the answer doesn't need handling here. */
     private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
@@ -71,31 +83,44 @@ class ChatsActivity : BaseActivity() {
         binding.rvChats.isNestedScrollingEnabled = false   // the page's ScrollView scrolls instead
         binding.etSearch.doAfterTextChanged { applyFilter() }
 
-        // My conversations, oldest first from Firebase, so reversed for the screen.
-        watch(Db.userChats(myUid).orderByChild("timestamp")) { snapshot ->
-            val list = snapshot.children
-                .mapNotNull { it.getValue(ChatSummary::class.java)?.apply { chatId = it.key ?: chatId } }
-                .filter { it.otherUid.isNotEmpty() }
-                .reversed()
-            loadPeople(list.map { it.otherUid }) {
-                chats.clear()
-                chats.addAll(list)
-                applyFilter()
-            }
-        }
-
-        // Who is online right now (green dots and the notes row).
-        watch(Db.users().orderByChild("online").equalTo(true)) { snapshot ->
-            onlineUids = snapshot.children.mapNotNull { it.key }.toSet()
-            adapter.notifyDataSetChanged()
-            showNotes()
-        }
-        watch(Db.friends(myUid)) { snapshot ->
-            friendUids = snapshot.children.mapNotNull { it.key }.toSet()
-            showNotes()
-        }
-
         askForNotificationPermission()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        handler.post(poll)
+    }
+
+    override fun onStop() {
+        handler.removeCallbacks(poll)
+        super.onStop()
+    }
+
+    /** One request: every chat row and the online friends. */
+    private fun load() {
+        Cached.get("chat/list.php") { json ->
+            if (isDestroyed) return@get
+            chats.clear()
+            for (item in Json.objects(json.optJSONArray("chats"))) {
+                val other = Json.saveUser(item.getJSONObject("other"))
+                people[other.uid] = other
+                chats.add(
+                    ChatSummary(
+                        chatId = Json.str(item, "chat_id"),
+                        otherUid = other.uid,
+                        lastMessage = Json.str(item, "last_message"),
+                        lastSenderId = item.optLong("last_sender_id").toString(),
+                        timestamp = item.optLong("time"),
+                        unread = item.optLong("unread"),
+                    )
+                )
+            }
+            onlineFriends.clear()
+            Json.objects(json.optJSONArray("online_friends")).mapTo(onlineFriends) { Json.saveUser(it) }
+            onlineUids = (onlineFriends.map { it.uid } + people.values.filter { it.online }.map { it.uid }).toSet()
+            applyFilter()
+            showNotes()
+        }
     }
 
     /** Android 13+ only: notifications are off until the user allows them. */
@@ -104,23 +129,6 @@ class ChatsActivity : BaseActivity() {
         val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
                 PackageManager.PERMISSION_GRANTED
         if (!granted) askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-    }
-
-    /** Loads the profiles of [uids] (cached by Db.getUser), then calls [onDone]. */
-    private fun loadPeople(uids: List<String>, onDone: () -> Unit) {
-        val missing = uids.distinct()
-        if (missing.isEmpty()) {
-            onDone()
-            return
-        }
-        var waiting = missing.size
-        for (uid in missing) {
-            Db.getUser(uid) { user ->
-                if (user != null) people[uid] = user
-                waiting--
-                if (waiting == 0 && !isDestroyed) onDone()
-            }
-        }
     }
 
     /** Shows the chats whose name contains the search text (all of them when it's empty). */
@@ -139,18 +147,14 @@ class ChatsActivity : BaseActivity() {
 
     /** Notes row: my friends who are online, after "Your note". */
     private fun showNotes() {
-        val online = friendUids.filter { it in onlineUids }
-        loadPeople(online) {
-            binding.llNotes.removeAllViews()
-            for (uid in online) {
-                val user = people[uid] ?: continue
-                val note = ItemChatNoteBinding.inflate(layoutInflater, binding.llNotes, false)
-                Avatars.bind(note.tvAvatar, note.ivAvatarPhoto, user)
-                note.tvName.text = user.name.substringBefore(' ')
-                note.root.contentDescription = getString(R.string.cd_open_chat, user.name)
-                note.root.setOnClickListener { openChat(uid) }
-                binding.llNotes.addView(note.root)
-            }
+        binding.llNotes.removeAllViews()
+        for (user in onlineFriends) {
+            val note = ItemChatNoteBinding.inflate(layoutInflater, binding.llNotes, false)
+            Avatars.bind(note.tvAvatar, note.ivAvatarPhoto, user)
+            note.tvName.text = user.name.substringBefore(' ')
+            note.root.contentDescription = getString(R.string.cd_open_chat, user.name)
+            note.root.setOnClickListener { openChat(user.uid) }
+            binding.llNotes.addView(note.root)
         }
     }
 
@@ -202,5 +206,9 @@ class ChatsActivity : BaseActivity() {
             row.root.contentDescription = getString(R.string.cd_open_chat, user?.name.orEmpty())
             row.root.setOnClickListener { openChat(chat.otherUid) }
         }
+    }
+
+    private companion object {
+        const val POLL_MS = 5000L
     }
 }

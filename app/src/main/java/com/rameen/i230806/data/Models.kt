@@ -129,15 +129,19 @@ data class Message(
     var senderId: String = "",
     var type: String = MsgType.TEXT,
     var text: String = "",
-    var mediaId: String = "",                   // image messages
+    var mediaId: String = "",                   // image / video / file: its URL (content:// while pending)
+    var fileName: String = "",                  // file messages: "notes.pdf"
+    var fileSize: Long = 0,
     var postId: String = "",                    // shared posts
     var replyToId: String = "",                 // the message this one replies to
     var replyToText: String = "",
     var replyToSenderId: String = "",
+    var replyToType: String = "",
     var edited: Boolean = false,
     var deleted: Boolean = false,
     var timestamp: Long = 0,
     var reactions: Map<String, String> = emptyMap(), // uid -> "love"
+    var pending: Boolean = false,               // written offline, not sent to the server yet
 )
 
 @IgnoreExtraProperties
@@ -207,6 +211,8 @@ object NotifType {
 object MsgType {
     const val TEXT = "text"
     const val IMAGE = "image"
+    const val VIDEO = "video"       // Assignment 3
+    const val FILE = "file"         // Assignment 3: pdf, docx, zip ...
     const val POST = "post"
     const val SYSTEM = "system"     // "Aisha took a screenshot"
 }

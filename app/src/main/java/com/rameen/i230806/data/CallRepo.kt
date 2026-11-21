@@ -4,7 +4,6 @@ import android.content.Context
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
-import com.rameen.i230806.push.PushSender
 
 /**
  * Ringing, answering and ending calls. The audio and video themselves go through Agora
@@ -52,17 +51,7 @@ object CallRepo {
                     timestamp = Db.now(),
                 )
                 ref.setValue(call)
-                Db.getUser(me) { user ->
-                    PushSender.send(
-                        context, otherUid,
-                        mapOf(
-                            "type" to PushSender.TYPE_CALL,
-                            "callId" to callId,
-                            "callType" to type,
-                            "title" to user?.name.orEmpty(),
-                        ),
-                    )
-                }
+                // The ringing push is sent by the server from step 9 (calls/start.php).
                 onStarted(call)
             }
 

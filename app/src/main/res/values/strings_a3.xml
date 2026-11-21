@@ -14,4 +14,15 @@
     <string name="pending_waiting">Waiting to send…</string>
     <string name="comment_error_post_pending">Wait until this post is sent, then comment.</string>
 
+    <!-- Chat (step 7) -->
+    <string name="chat_attach_photo">Photo</string>
+    <string name="chat_attach_video">Video</string>
+    <string name="chat_attach_file">File</string>
+    <string name="chat_file_too_big">Files can be at most 25 MB.</string>
+    <string name="chat_sending">Sending…</string>
+    <string name="chat_video_bubble">▶  Video · tap to play</string>
+    <string name="chat_file_bubble">📄  %1$s  %2$s</string>
+    <string name="preview_video">Video</string>
+    <string name="preview_file">File: %1$s</string>
+
 </resources>

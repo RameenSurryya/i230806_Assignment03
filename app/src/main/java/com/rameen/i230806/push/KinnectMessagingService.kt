@@ -19,9 +19,11 @@ import com.rameen.i230806.data.Extra
 import com.rameen.i230806.ui.chat.ChatActivity
 import com.rameen.i230806.ui.chat.IncomingCallActivity
 import com.rameen.i230806.ui.home.HomeActivity
+import com.rameen.i230806.ui.social.NotificationsActivity
 
 /**
- * Receives the pushes sent by PushSender (registered in AndroidManifest.xml).
+ * Receives the pushes our PHP server sends through FCM (backend/lib/push.php; registered in
+ * AndroidManifest.xml).
  *
  * Pushes carry only "data" (no "notification" part), so this runs every time, whether the app
  * is open, in the background or closed, and builds the notification itself:
@@ -30,6 +32,8 @@ import com.rameen.i230806.ui.home.HomeActivity
  *    (with Home behind it, so Back works). Skipped while that same chat is on screen.
  *  - "call": app open -> the Incoming call screen opens straight away;
  *    app in the background -> a ringing notification on the Calls channel that opens it.
+ *  - "alert": a friend request, reaction, comment ... on the General channel; tapping opens
+ *    the Notifications screen.
  *
  * Every push names who it is for (toUid). If someone else is logged in on this phone now,
  * the push is ignored, so a logged-out account never gets notifications here.
@@ -38,8 +42,7 @@ class KinnectMessagingService : FirebaseMessagingService() {
 
     /** Firebase gave this phone a new token: save it so pushes keep reaching us. */
     override fun onNewToken(token: String) {
-        val me = Db.uid ?: return
-        Db.user(me).child("fcmToken").setValue(token)
+        PushSender.saveToken(token)
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
@@ -48,6 +51,7 @@ class KinnectMessagingService : FirebaseMessagingService() {
         when (data["type"]) {
             PushSender.TYPE_MESSAGE -> showMessage(data)
             PushSender.TYPE_CALL -> showCall(data)
+            PushSender.TYPE_ALERT -> showAlert(data)
         }
     }
 
@@ -81,6 +85,30 @@ class KinnectMessagingService : FirebaseMessagingService() {
             .build()
         // One notification per chat: a newer message replaces the older one.
         notify(chatId.hashCode(), notification)
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Alerts: the same things as the Notifications screen
+    // ---------------------------------------------------------------------------------------
+
+    private fun showAlert(data: Map<String, String>) {
+        val home = Intent(this, HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val list = Intent(this, NotificationsActivity::class.java)
+        val open = PendingIntent.getActivities(
+            this, ALERT_ID, arrayOf(home, list),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val body = data["body"].orEmpty()
+        val notification = NotificationCompat.Builder(this, KinnectApp.CHANNEL_GENERAL)
+            .setSmallIcon(R.drawable.ic_bell)
+            .setColor(ContextCompat.getColor(this, R.color.teal))
+            .setContentTitle(data["title"].orEmpty())
+            .setContentText(body)
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        // Each alert gets its own id, so several can show at once.
+        notify(ALERT_ID + (System.currentTimeMillis() % 1000).toInt(), notification)
     }
 
     // ---------------------------------------------------------------------------------------
@@ -145,5 +173,6 @@ class KinnectMessagingService : FirebaseMessagingService() {
 
     private companion object {
         const val RING_TIMEOUT_MS = 45_000L
+        const val ALERT_ID = 7000
     }
 }

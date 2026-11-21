@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -27,12 +28,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.widget.doAfterTextChanged
-import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.ValueEventListener
 import com.rameen.i230806.R
 import com.rameen.i230806.data.ChatRepo
 import com.rameen.i230806.data.Db
@@ -40,7 +37,8 @@ import com.rameen.i230806.data.Extra
 import com.rameen.i230806.data.Message
 import com.rameen.i230806.data.MsgType
 import com.rameen.i230806.data.PickMode
-import com.rameen.i230806.data.Post
+import com.rameen.i230806.data.Outbox
+import com.rameen.i230806.data.PostRepo
 import com.rameen.i230806.data.Reaction
 import com.rameen.i230806.data.User
 import com.rameen.i230806.databinding.ActivityChatBinding
@@ -58,13 +56,17 @@ import com.rameen.i230806.util.Times
 /**
  * 21 Chat with one person (Extra.UID, or Extra.CHAT_ID when opened from a notification).
  *
- *  - Messages are live from messages/{chatId} (the newest 100). Bubbles from the same person
- *    sent close together form a group: joined corners, their avatar only beside the last one.
- *  - Send text with the paper plane, or a thumbs-up when the field is empty. Camera and
- *    gallery send a photo. While I type, the other phone shows "typing" (typing/{chatId}).
+ *  - Assignment 3: messages come from SQLite at once (works offline) and from
+ *    chat/messages.php every 2 seconds while the screen shows (only what changed since the
+ *    last answer). Bubbles from the same person sent close together form a group: joined
+ *    corners, their avatar only beside the last one.
+ *  - Send text with the paper plane, or a thumbs-up when the field is empty. Camera sends a
+ *    photo; the gallery button offers Photo, Video or File. Offline, messages show
+ *    "Sending..." and go out when the internet is back. While I type, the other phone shows
+ *    "typing" (chat/typing.php).
  *  - Long-press a message: Reply, Love, and for my own messages within 5 minutes
- *    Edit (text only) and Delete for everyone (ChatRepo.canChange).
- *  - "Seen": the other person's chatReads time is after my last message -> tiny avatar under it.
+ *    Edit and Delete for everyone. The server checks the 5 minutes and refuses later changes.
+ *  - "Seen": the other person opened the chat after my last message -> tiny avatar under it.
  *  - Screenshots: when I take one, a grey line "Umer took a screenshot" is added to the chat
  *    (Android 14+: the official ScreenCaptureCallback; older phones: watching for a new
  *    picture named "Screenshot..." in the gallery, if gallery access was allowed).
@@ -86,7 +88,29 @@ class ChatActivity : BaseActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
     private var typingSent = false
+    private var typingSentAt = 0L
     private val stopTyping = Runnable { setTyping(false) }
+
+    /** Shared posts already asked from the server, and the ones that were deleted. */
+    private val fetchedPosts = mutableSetOf<String>()
+    private val gonePosts = mutableSetOf<String>()
+
+    /** The server's time of the last answer: the next request asks only for changes since then. */
+    private var since = 0L
+    private val poll = object : Runnable {
+        override fun run() {
+            refresh()
+            handler.postDelayed(this, POLL_MS)
+        }
+    }
+
+    /** Video and file pickers (Android's own document picker). */
+    private val pickVideo = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) sendVideo(uri)
+    }
+    private val pickFile = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) sendFile(uri)
+    }
 
     /** Camera in photo mode returns one photo (Extra.MEDIA_URI). */
     private val takePhoto =
@@ -120,13 +144,17 @@ class ChatActivity : BaseActivity() {
         setupHeader()
         setupList()
         setupInput()
-        startWatching()
+        Db.getUser(otherUid) { user -> if (user != null && !isDestroyed) showOther(user) }
+        reload()
+
+        // Messages written offline that were sent later: redraw.
+        Outbox.synced.observe(this) { reload() }
     }
 
     override fun onResume() {
         super.onResume()
         openChatId = chatId
-        ChatRepo.markRead(chatId)
+        ChatRepo.markRead(otherUid)
         // Remove this chat's notification (KinnectMessagingService uses chatId.hashCode() as its id).
         NotificationManagerCompat.from(this).cancel(chatId.hashCode())
     }
@@ -139,9 +167,11 @@ class ChatActivity : BaseActivity() {
     override fun onStart() {
         super.onStart()
         startScreenshotDetection()
+        handler.post(poll)
     }
 
     override fun onStop() {
+        handler.removeCallbacks(poll)
         stopScreenshotDetection()
         setTyping(false)
         super.onStop()
@@ -177,14 +207,13 @@ class ChatActivity : BaseActivity() {
     /** Name, avatar, online dot and "Active now" / "Active 5m ago". */
     private fun showOther(user: User) {
         other = user
-        Db.remember(user)
         binding.tvHeaderName.text = user.name
         Avatars.bind(binding.tvHeaderAvatar, binding.ivHeaderAvatarPhoto, user)
         Avatars.bind(binding.tvTypingAvatar, binding.ivTypingAvatarPhoto, user)
         binding.vHeaderOnline.visibility = if (user.online) View.VISIBLE else View.GONE
         binding.llTypingBubble.contentDescription = getString(R.string.cd_is_typing, firstName())
 
-        val sinceSeen = Db.now() - user.lastSeen
+        val sinceSeen = ChatRepo.now() - user.lastSeen
         val status = when {
             user.online -> getString(R.string.chat_status)
             user.lastSeen == 0L || sinceSeen > DAY_MS -> ""
@@ -202,33 +231,33 @@ class ChatActivity : BaseActivity() {
     // Live data
     // ---------------------------------------------------------------------------------------
 
-    private fun startWatching() {
-        watch(Db.user(otherUid)) { snapshot ->
-            snapshot.getValue(User::class.java)?.let { showOther(it) }
-        }
-        watch(Db.friends(myUid).child(otherUid)) { snapshot ->
-            isFriend = snapshot.exists()
-            adapter.notifyItemChanged(0)
-        }
-        watch(Db.messages(chatId).limitToLast(MAX_MESSAGES)) { snapshot ->
-            val wasAtBottom = !binding.rvMessages.canScrollVertically(1)
-            messages.clear()
-            snapshot.children.mapNotNullTo(messages) { child ->
-                child.getValue(Message::class.java)?.apply { id = child.key ?: id }
-            }
-            adapter.notifyDataSetChanged()
-            if (wasAtBottom || messages.lastOrNull()?.senderId == myUid) scrollToEnd()
-            // Reading new messages while the chat is open.
-            if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) ChatRepo.markRead(chatId)
-        }
-        watch(Db.chatReads(chatId).child(otherUid)) { snapshot ->
-            otherReadAt = (snapshot.value as? Number)?.toLong() ?: 0L
-            adapter.notifyDataSetChanged()
-        }
-        watch(Db.typing(chatId).child(otherUid)) { snapshot ->
-            binding.llTyping.visibility = if (snapshot.getValue(Boolean::class.java) == true) View.VISIBLE else View.GONE
+    /** Draws the messages saved on the phone. */
+    private fun reload() {
+        val wasAtBottom = !binding.rvMessages.canScrollVertically(1)
+        val oldLast = messages.lastOrNull()?.id
+        messages.clear()
+        messages.addAll(ChatRepo.cachedMessages(chatId))
+        adapter.notifyDataSetChanged()
+        val newLast = messages.lastOrNull()
+        if (wasAtBottom || (newLast?.id != oldLast && newLast?.senderId == myUid)) scrollToEnd()
+    }
+
+    /** Asks the server what changed; new messages from them also count as read while I'm here. */
+    private fun refresh() {
+        ChatRepo.refresh(otherUid, since) { state ->
+            if (state == null || isDestroyed) return@refresh
+            val hadNew = since == 0L || ChatRepo.cachedMessages(chatId, 1).lastOrNull()?.id != messages.lastOrNull()?.id
+            since = state.time
+            state.other?.let { showOther(it) }
+            isFriend = state.friends
+            otherReadAt = state.otherReadAt
+            binding.llTyping.visibility = if (state.typing) View.VISIBLE else View.GONE
+            reload()
+            if (hadNew && isResumedNow()) ChatRepo.markRead(otherUid)
         }
     }
+
+    private fun isResumedNow() = lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
 
     private fun scrollToEnd() {
         if (adapter.itemCount > 0) binding.rvMessages.scrollToPosition(adapter.itemCount - 1)
@@ -258,16 +287,37 @@ class ChatActivity : BaseActivity() {
         binding.ivCamera.setOnClickListener {
             takePhoto.launch(Intent(this, CameraActivity::class.java).putExtra(Extra.PICK_MODE, PickMode.POST))
         }
-        binding.ivGallery.setOnClickListener {
-            pickPhoto.launch(Intent(this, PhotoPickerActivity::class.java).putExtra(Extra.PICK_MODE, PickMode.SINGLE_IMAGE))
+        binding.ivGallery.setOnClickListener { showAttachMenu(it) }
+    }
+
+    /** Gallery button: Photo (Kinnect's picker), Video or File (Android's document picker). */
+    private fun showAttachMenu(anchor: View) {
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add(0, ATTACH_PHOTO, 0, R.string.chat_attach_photo)
+        popup.menu.add(0, ATTACH_VIDEO, 1, R.string.chat_attach_video)
+        popup.menu.add(0, ATTACH_FILE, 2, R.string.chat_attach_file)
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                ATTACH_PHOTO -> pickPhoto.launch(
+                    Intent(this, PhotoPickerActivity::class.java).putExtra(Extra.PICK_MODE, PickMode.SINGLE_IMAGE)
+                )
+                ATTACH_VIDEO -> pickVideo.launch("video/*")
+                ATTACH_FILE -> pickFile.launch("*/*")
+            }
+            true
         }
+        popup.show()
     }
 
     /** Only writes to the database when the state really changes. */
     private fun setTyping(typing: Boolean) {
-        if (typing == typingSent || !::chatId.isInitialized) return
+        if (!::chatId.isInitialized) return
+        val now = System.currentTimeMillis()
+        // Typing lasts 6 s on the server: renew it every 3 s while still typing.
+        if (typing == typingSent && (!typing || now - typingSentAt < TYPING_RENEW_MS)) return
         typingSent = typing
-        ChatRepo.setTyping(chatId, typing)
+        typingSentAt = now
+        ChatRepo.setTyping(otherUid, typing)
     }
 
     private fun sendText() {
@@ -275,16 +325,52 @@ class ChatActivity : BaseActivity() {
         ChatRepo.sendText(this, otherUid, text.ifEmpty { getString(R.string.chat_like_text) }, replyTo)
         binding.etMessage.setText("")
         setReply(null)
+        reload()
+        scrollToEnd()
     }
 
+    /** Photos are shrunk and uploaded with the message (offline: queued with it). */
     private fun sendPhoto(uri: Uri) {
-        val answering = replyTo
-        setReply(null)
-        toast(R.string.chat_sending_photo)
-        Images.uploadImage(this, uri) { mediaId ->
-            if (mediaId == null) toast(R.string.chat_photo_error)
-            else ChatRepo.sendImage(this, otherUid, mediaId, answering)
+        ChatRepo.sendImage(this, otherUid, uri, replyTo)
+        afterSendingMedia()
+    }
+
+    private fun sendVideo(uri: Uri) {
+        if (sizeOf(uri) > MAX_UPLOAD_BYTES) {
+            toast(R.string.chat_file_too_big)
+            return
         }
+        ChatRepo.sendVideo(this, otherUid, uri, replyTo)
+        afterSendingMedia()
+    }
+
+    private fun sendFile(uri: Uri) {
+        val size = sizeOf(uri)
+        if (size > MAX_UPLOAD_BYTES) {
+            toast(R.string.chat_file_too_big)
+            return
+        }
+        ChatRepo.sendFile(this, otherUid, uri, nameOf(uri), size, replyTo)
+        afterSendingMedia()
+    }
+
+    private fun afterSendingMedia() {
+        setReply(null)
+        reload()
+        scrollToEnd()
+    }
+
+    /** The file's name and size as the phone's file picker reports them. */
+    private fun nameOf(uri: Uri): String = query(uri, OpenableColumns.DISPLAY_NAME)?.toString() ?: "file"
+    private fun sizeOf(uri: Uri): Long = (query(uri, OpenableColumns.SIZE) as? Long) ?: 0L
+
+    private fun query(uri: Uri, column: String): Any? = try {
+        contentResolver.query(uri, arrayOf(column), null, null, null)?.use { cursor ->
+            if (!cursor.moveToFirst() || cursor.isNull(0)) null
+            else if (column == OpenableColumns.SIZE) cursor.getLong(0) else cursor.getString(0)
+        }
+    } catch (e: Exception) {
+        null
     }
 
     /** Shows or hides "Replying to ..." above the input. */
@@ -304,6 +390,8 @@ class ChatActivity : BaseActivity() {
     private fun previewOf(message: Message): String = when {
         message.text.isNotEmpty() -> message.text
         message.type == MsgType.IMAGE -> getString(R.string.preview_photo)
+        message.type == MsgType.VIDEO -> getString(R.string.preview_video)
+        message.type == MsgType.FILE -> getString(R.string.preview_file, message.fileName)
         message.type == MsgType.POST -> getString(R.string.preview_post)
         else -> ""
     }
@@ -325,9 +413,16 @@ class ChatActivity : BaseActivity() {
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 MENU_REPLY -> setReply(message)
-                MENU_LOVE -> ChatRepo.react(chatId, message, if (loved) null else Reaction.LOVE.key)
+                MENU_LOVE -> {
+                    ChatRepo.react(this, message, if (loved) null else Reaction.LOVE.key)
+                    reload()
+                }
                 MENU_EDIT -> editMessage(message)
-                MENU_DELETE -> if (!ChatRepo.delete(this, chatId, message)) toast(R.string.chat_too_late)
+                MENU_DELETE -> ChatRepo.delete(message) { error ->
+                    if (isDestroyed) return@delete
+                    if (error != null) toast(error)   // e.g. "only within 5 minutes" from the server
+                    reload()
+                }
             }
             true
         }
@@ -350,8 +445,12 @@ class ChatActivity : BaseActivity() {
             .setView(box)
             .setPositiveButton(R.string.chat_edit_save) { _, _ ->
                 val newText = field.text.toString().trim()
-                if (newText.isNotEmpty() && newText != message.text && !ChatRepo.edit(chatId, message, newText)) {
-                    toast(R.string.chat_too_late)
+                if (newText.isNotEmpty() && newText != message.text) {
+                    ChatRepo.edit(message, newText) { error ->
+                        if (isDestroyed) return@edit
+                        if (error != null) toast(error)   // the server refuses after 5 minutes
+                        reload()
+                    }
                 }
             }
             .setNegativeButton(R.string.chat_edit_cancel, null)
@@ -559,7 +658,9 @@ class ChatActivity : BaseActivity() {
         private fun bindContent(view: ItemMessageBinding, message: Message, mine: Boolean, first: Boolean, last: Boolean) {
             val showImage = message.type == MsgType.IMAGE && !message.deleted
             val showPost = message.type == MsgType.POST && !message.deleted
-            val showText = message.deleted || message.text.isNotEmpty()
+            // Videos and files are a text bubble with an icon line; tapping opens them.
+            val attachment = !message.deleted && (message.type == MsgType.VIDEO || message.type == MsgType.FILE)
+            val showText = message.deleted || message.text.isNotEmpty() || attachment
             view.flImage.visibility = if (showImage) View.VISIBLE else View.GONE
             view.llPost.visibility = if (showPost) View.VISIBLE else View.GONE
             view.tvText.visibility = if (showText) View.VISIBLE else View.GONE
@@ -577,11 +678,17 @@ class ChatActivity : BaseActivity() {
                 view.tvText.setTextColor(ContextCompat.getColor(this@ChatActivity, R.color.text_grey))
                 view.tvText.setBackgroundResource(R.drawable.bg_bubble_received)
             } else {
-                view.tvText.text = message.text
+                view.tvText.text = when {
+                    message.type == MsgType.VIDEO -> getString(R.string.chat_video_bubble)
+                    message.type == MsgType.FILE -> getString(R.string.chat_file_bubble, message.fileName, sizeText(message.fileSize))
+                    else -> message.text
+                }
                 view.tvText.typeface = Typeface.create(view.tvText.typeface, Typeface.NORMAL)
                 view.tvText.setTextColor(ContextCompat.getColor(this@ChatActivity, if (mine) R.color.white else R.color.text_dark))
                 view.tvText.setBackgroundResource(bubbleShape(mine, first, last))
             }
+
+            view.tvText.setOnClickListener(if (attachment) View.OnClickListener { openAttachment(message) } else null)
 
             // Long-press any part of the message for the menu.
             val longPress = View.OnLongClickListener { showMenu(it, message); true }
@@ -607,28 +714,34 @@ class ChatActivity : BaseActivity() {
             view.llPost.setOnClickListener {
                 openScreen(CommentsActivity::class.java) { putExtra(Extra.POST_ID, message.postId) }
             }
-            Db.post(message.postId).addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (view.root.tag != message.id) return   // row reused for another message
-                    val post = snapshot.getValue(Post::class.java)
-                    if (post == null) {
+            val show = show@{ post: com.rameen.i230806.data.Post?, gone: Boolean ->
+                if (view.root.tag != message.id) return@show   // row reused for another message
+                if (post == null) {
+                    if (gone) {
                         view.tvPostAuthor.setText(R.string.chat_post_unavailable)
                         view.llPost.setOnClickListener(null)
-                        return
                     }
-                    view.tvPostText.text = post.text
-                    view.tvPostText.visibility = if (post.text.isEmpty()) View.GONE else View.VISIBLE
-                    post.imageIds.firstOrNull()?.let { imageId ->
-                        view.ivPostImage.visibility = View.VISIBLE
-                        Images.load(view.ivPostImage, imageId)
-                    }
-                    Db.getUser(post.authorId) { author ->
-                        if (view.root.tag == message.id) view.tvPostAuthor.text = author?.name.orEmpty()
-                    }
+                    return@show
                 }
-
-                override fun onCancelled(error: DatabaseError) {}
-            })
+                view.tvPostText.text = post.text
+                view.tvPostText.visibility = if (post.text.isEmpty()) View.GONE else View.VISIBLE
+                post.imageIds.firstOrNull()?.let { imageId ->
+                    view.ivPostImage.visibility = View.VISIBLE
+                    Images.load(view.ivPostImage, imageId)
+                }
+                Db.getUser(post.authorId) { author ->
+                    if (view.root.tag == message.id) view.tvPostAuthor.text = author?.name.orEmpty()
+                }
+            }
+            // The saved copy; the server is asked once per post while this screen is open.
+            val cached = PostRepo.cachedPost(message.postId)
+            if (cached != null || message.postId in gonePosts) show(cached, message.postId in gonePosts)
+            if (fetchedPosts.add(message.postId)) {
+                PostRepo.refreshPost(message.postId) { post, gone ->
+                    if (gone) gonePosts.add(message.postId)
+                    if (post != null || gone) show(post, gone)
+                }
+            }
         }
 
         /** Love heart on the bubble's bottom-left corner; the bubble makes room for half of it. */
@@ -648,10 +761,11 @@ class ChatActivity : BaseActivity() {
 
         /** "Edited" / "Sent" under the bubble, and the seen avatar under my last message. */
         private fun bindMeta(view: ItemMessageBinding, message: Message, mine: Boolean, isLast: Boolean) {
-            val seen = mine && isLast && otherReadAt >= message.timestamp
+            val seen = mine && isLast && !message.pending && otherReadAt >= message.timestamp
             val parts = mutableListOf<String>()
             if (message.edited && !message.deleted) parts.add(getString(R.string.chat_edited))
-            if (mine && isLast && !seen) parts.add(getString(R.string.chat_sent))
+            if (message.pending) parts.add(getString(R.string.chat_sending))
+            else if (mine && isLast && !seen) parts.add(getString(R.string.chat_sent))
             view.tvMeta.text = parts.joinToString(" · ")
             view.tvMeta.visibility = if (parts.isEmpty()) View.GONE else View.VISIBLE
             placeUnderBubble(view.tvMeta, if (mine) Gravity.END else Gravity.START)
@@ -664,12 +778,38 @@ class ChatActivity : BaseActivity() {
             }
         }
 
+        /** "2.4 MB", "830 KB" */
+        private fun sizeText(bytes: Long): String = when {
+            bytes >= 1_048_576 -> String.format(java.util.Locale.US, "%.1f MB", bytes / 1_048_576.0)
+            bytes > 0 -> "${(bytes + 1023) / 1024} KB"
+            else -> ""
+        }
+
         /** Small captions line up with the bubble: right edge for mine, after the avatar for theirs. */
         private fun placeUnderBubble(label: View, side: Int) {
             val params = label.layoutParams as LinearLayout.LayoutParams
             params.gravity = side
             params.marginStart = if (side == Gravity.START) resources.getDimensionPixelSize(R.dimen.chat_meta_indent) else 0
             label.layoutParams = params
+        }
+    }
+
+    /** Opens a video or file with whatever app the phone has for it (player, PDF viewer ...). */
+    private fun openAttachment(message: Message) {
+        if (message.pending || message.mediaId.isEmpty()) {
+            toast(R.string.chat_sending)
+            return
+        }
+        val type = if (message.type == MsgType.VIDEO) "video/*" else "*/*"
+        try {
+            startActivity(
+                Intent(Intent.ACTION_VIEW)
+                    .setDataAndType(Uri.parse(message.mediaId), type)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            )
+        } catch (e: android.content.ActivityNotFoundException) {
+            // No app for this type: let the browser download it.
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(message.mediaId)))
         }
     }
 
@@ -686,12 +826,18 @@ class ChatActivity : BaseActivity() {
         private const val MENU_EDIT = 3
         private const val MENU_DELETE = 4
 
-        private const val MAX_MESSAGES = 100
         private const val MINUTE_MS = 60_000L
         private const val DAY_MS = 24 * 60 * MINUTE_MS
         private const val GROUP_MS = 5 * MINUTE_MS        // bubbles closer than this join up
         private const val PART_MS = 60 * MINUTE_MS        // a new time separator after an hour
         private const val TYPING_TIMEOUT_MS = 4000L
+        private const val TYPING_RENEW_MS = 3000L
+        private const val POLL_MS = 2000L
+        private const val MAX_UPLOAD_BYTES = 25L * 1024 * 1024   // the server's limit (upload.php)
+
+        private const val ATTACH_PHOTO = 1
+        private const val ATTACH_VIDEO = 2
+        private const val ATTACH_FILE = 3
         private const val RECENT_MS = 10_000L
     }
 }

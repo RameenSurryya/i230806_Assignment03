@@ -28,6 +28,7 @@ app/src/main/assets/agora-certificate.txt
 
 # Assignment 3 backend: database password, server keys, uploaded files
 backend/config/config.php
-backend/secrets/
+backend/secrets/*
+!backend/secrets/.htaccess
 backend/uploads/*
 !backend/uploads/.htaccess

@@ -156,4 +156,41 @@ object Json {
         )
         return story(j)
     }
+
+    // ---------------------------------------------------------------------------------------
+    // Chat messages (step 7)
+    // ---------------------------------------------------------------------------------------
+
+    fun message(j: JSONObject): Message {
+        val reactions = HashMap<String, String>()
+        j.optJSONObject("reactions")?.let { r -> r.keys().forEach { reactions[it] = r.optString(it) } }
+        return Message(
+            id = str(j, "id"),
+            senderId = j.optLong("sender_id").toString(),
+            type = str(j, "type").ifEmpty { MsgType.TEXT },
+            text = str(j, "text"),
+            mediaId = str(j, "media_url"),
+            fileName = str(j, "file_name"),
+            fileSize = j.optLong("file_size"),
+            postId = if (j.isNull("post_id")) "" else str(j, "post_id"),
+            replyToId = if (j.isNull("reply_to_id")) "" else str(j, "reply_to_id"),
+            replyToText = str(j, "reply_to_text"),
+            replyToSenderId = if (j.isNull("reply_to_sender_id")) "" else str(j, "reply_to_sender_id"),
+            replyToType = str(j, "reply_to_type"),
+            edited = j.optBoolean("edited"),
+            deleted = j.optBoolean("deleted"),
+            timestamp = j.optLong("created_at"),
+            reactions = reactions,
+            pending = j.optBoolean("pending"),
+        )
+    }
+
+    fun saveMessage(j: JSONObject): Message {
+        LocalDb.put(
+            LocalDb.MESSAGES, "id", str(j, "id"), j,
+            mapOf("chat_id" to str(j, "chat_id"), "created_at" to j.optLong("created_at"),
+                "pending" to j.optBoolean("pending")),
+        )
+        return message(j)
+    }
 }

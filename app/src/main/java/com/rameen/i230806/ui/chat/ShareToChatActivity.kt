@@ -8,7 +8,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.rameen.i230806.R
 import com.rameen.i230806.data.ChatRepo
-import com.rameen.i230806.data.Db
+import com.rameen.i230806.data.Cached
+import com.rameen.i230806.data.Json
 import com.rameen.i230806.data.Extra
 import com.rameen.i230806.data.PostRepo
 import com.rameen.i230806.data.User
@@ -46,32 +47,16 @@ class ShareToChatActivity : BaseActivity() {
         binding.rvFriends.layoutManager = LinearLayoutManager(this)
         binding.rvFriends.adapter = adapter
 
-        watch(Db.friends(myUid)) { snapshot ->
-            val uids = snapshot.children.mapNotNull { it.key }
-            binding.tvEmpty.visibility = if (uids.isEmpty()) View.VISIBLE else View.GONE
-            loadFriends(uids)
-        }
-    }
-
-    /** Loads every friend's profile, then shows them A to Z. */
-    private fun loadFriends(uids: List<String>) {
-        val loaded = mutableListOf<User>()
-        var waiting = uids.size
-        if (waiting == 0) {
+        // My friends (friends/lists.php; the saved copy first, so it works offline).
+        Cached.get("friends/lists.php") { json ->
+            if (isDestroyed) return@get
             friends.clear()
+            Json.objects(json.optJSONArray("friends"))
+                .map { Json.user(it.getJSONObject("user")) }
+                .sortedBy { it.name.lowercase() }
+                .let { friends.addAll(it) }
+            binding.tvEmpty.visibility = if (friends.isEmpty()) View.VISIBLE else View.GONE
             adapter.notifyDataSetChanged()
-            return
-        }
-        for (uid in uids) {
-            Db.getUser(uid) { user ->
-                if (user != null) loaded.add(user)
-                waiting--
-                if (waiting == 0) {
-                    friends.clear()
-                    friends.addAll(loaded.sortedBy { it.nameLower })
-                    adapter.notifyDataSetChanged()
-                }
-            }
         }
     }
 

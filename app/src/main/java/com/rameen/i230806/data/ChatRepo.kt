@@ -1,29 +1,23 @@
 package com.rameen.i230806.data
 
 import android.content.Context
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.ServerValue
-import com.google.firebase.database.ValueEventListener
-import com.rameen.i230806.R
-import com.rameen.i230806.push.PushSender
+import android.net.Uri
+import org.json.JSONObject
 
 /**
- * Everything that changes chats (used by Chat, Chats and Share to chat). How it is stored
- * (see Models.kt):
+ * Everything about chats (Chat, Chats, Share to chat, story replies, call lines).
+ * Assignment 3: messages live in MySQL behind the chat/ PHP files and in SQLite on the phone.
  *
- *   messages/{chatId}/{msgId}      Message
- *   userChats/{uid}/{chatId}       ChatSummary: one row per conversation on the Chats screen,
- *                                  stored for BOTH people (each with their own unread count)
- *   typing/{chatId}/{uid}          true while that person is typing
- *   chatReads/{chatId}/{uid}       when that person last opened the chat ("Seen")
- *
- * chatId is the two uids in alphabetical order (Db.chatId), so both phones use the same one.
- * Sending writes the message and both summaries in ONE updateChildren call, so the Chats list
- * can never show a message that isn't in the chat. The other person's unread count goes up
- * with ServerValue.increment(1), and they get a push notification (PushSender).
- *
- * Your own messages can be edited or deleted for EDIT_WINDOW_MS (5 minutes) after sending.
+ *  - chatId = smaller user id + "_" + bigger one (Db.chatId), the same as the server.
+ *  - Sending: the message is saved in SQLite at once with pending = true ("Sending..."), then
+ *    sent through the Outbox. Offline it waits in the queue (with its UUID) and is sent in
+ *    order when the internet is back; the server ignores a repeated UUID.
+ *  - Reading: the Chat screen asks chat/messages.php every 2 seconds for what changed since
+ *    the last answer (new, edited, deleted messages, reactions, "Seen", "typing").
+ *  - Edit / delete: only my own messages, only within 5 minutes. The SERVER checks the time
+ *    (chat/edit.php, chat/delete.php) and refuses later changes; the app hides the menu items
+ *    after 5 minutes too, using the server's clock. They need the internet.
+ *  - The push notification to the other phone is sent by the server (step 8).
  */
 object ChatRepo {
 
@@ -31,79 +25,141 @@ object ChatRepo {
 
     private val me: String get() = Db.uid ?: ""
 
-    /** The other person in a chat: chatId is "uidA_uidB". */
+    /** Server clock minus phone clock, from the last chat answer. */
+    @Volatile private var serverOffset = 0L
+
+    fun now(): Long = System.currentTimeMillis() + serverOffset
+
+    fun rememberServerTime(time: Long) {
+        if (time > 0) serverOffset = time - System.currentTimeMillis()
+    }
+
+    /** The other person in a chat: chatId is "idA_idB". */
     fun otherUidOf(chatId: String): String = chatId.split("_").firstOrNull { it != me } ?: ""
+
+    private fun isLocal(id: String) = id.startsWith("local-")
 
     // ---------------------------------------------------------------------------------------
     // Sending
     // ---------------------------------------------------------------------------------------
 
-    fun sendText(context: Context, otherUid: String, text: String, replyTo: Message? = null) {
-        send(context, otherUid, Message(type = MsgType.TEXT, text = text).withReply(replyTo), text)
-    }
+    fun sendText(context: Context, otherUid: String, text: String, replyTo: Message? = null) =
+        send(context, otherUid, MsgType.TEXT, text, replyTo = replyTo)
 
-    fun sendImage(context: Context, otherUid: String, mediaId: String, replyTo: Message? = null) {
-        send(
-            context, otherUid,
-            Message(type = MsgType.IMAGE, mediaId = mediaId).withReply(replyTo),
-            context.getString(R.string.preview_photo),
-        )
-    }
+    fun sendImage(context: Context, otherUid: String, photo: Uri, replyTo: Message? = null) =
+        send(context, otherUid, MsgType.IMAGE, "", media = photo, replyTo = replyTo)
+
+    fun sendVideo(context: Context, otherUid: String, video: Uri, replyTo: Message? = null) =
+        send(context, otherUid, MsgType.VIDEO, "", media = video, replyTo = replyTo)
+
+    fun sendFile(context: Context, otherUid: String, file: Uri, name: String, size: Long, replyTo: Message? = null) =
+        send(context, otherUid, MsgType.FILE, "", media = file, fileName = name, fileSize = size, replyTo = replyTo)
 
     /** Share to chat: the post, with an optional message. */
-    fun sendPost(context: Context, otherUid: String, postId: String, text: String) {
-        send(
-            context, otherUid,
-            Message(type = MsgType.POST, postId = postId, text = text),
-            text.ifEmpty { context.getString(R.string.preview_post) },
-        )
-    }
+    fun sendPost(context: Context, otherUid: String, postId: String, text: String) =
+        send(context, otherUid, MsgType.POST, text, postId = postId)
 
-    /** A grey line in the chat, e.g. "Aisha took a screenshot". No push notification. */
-    fun sendSystem(context: Context, otherUid: String, text: String) {
-        send(context, otherUid, Message(type = MsgType.SYSTEM, text = text), text, push = false)
-    }
+    /** A grey line in the chat, e.g. "Aisha took a screenshot" or a call line. */
+    fun sendSystem(context: Context, otherUid: String, text: String) =
+        send(context, otherUid, MsgType.SYSTEM, text)
 
-    /** Copies what is needed to show "replying to ..." above the new message. */
-    private fun Message.withReply(replyTo: Message?): Message {
-        if (replyTo != null) {
-            replyToId = replyTo.id
-            replyToText = replyTo.text
-            replyToSenderId = replyTo.senderId
-        }
-        return this
-    }
-
-    private fun send(context: Context, otherUid: String, message: Message, preview: String, push: Boolean = true) {
+    private fun send(
+        context: Context,
+        otherUid: String,
+        type: String,
+        text: String,
+        media: Uri? = null,
+        fileName: String = "",
+        fileSize: Long = 0,
+        postId: String = "",
+        replyTo: Message? = null,
+    ) {
         if (me.isEmpty() || otherUid.isEmpty()) return
         val chatId = Db.chatId(me, otherUid)
-        val ref = Db.messages(chatId).push()
-        val now = Db.now()
-        message.id = ref.key ?: ""
-        message.senderId = me
-        message.timestamp = now
+        val uuid = Outbox.newUuid()
+        val localId = Outbox.localId(uuid)
+        val created = now()
 
-        val paths = HashMap<String, Any?>()
-        paths["messages/$chatId/${message.id}"] = message
-        // My row on Chats
-        paths["userChats/$me/$chatId/chatId"] = chatId
-        paths["userChats/$me/$chatId/otherUid"] = otherUid
-        paths["userChats/$me/$chatId/lastMessage"] = preview
-        paths["userChats/$me/$chatId/lastSenderId"] = me
-        paths["userChats/$me/$chatId/timestamp"] = now
-        // Their row on Chats, with one more unread message
-        paths["userChats/$otherUid/$chatId/chatId"] = chatId
-        paths["userChats/$otherUid/$chatId/otherUid"] = me
-        paths["userChats/$otherUid/$chatId/lastMessage"] = preview
-        paths["userChats/$otherUid/$chatId/lastSenderId"] = me
-        paths["userChats/$otherUid/$chatId/timestamp"] = now
-        paths["userChats/$otherUid/$chatId/unread"] = ServerValue.increment(1)
-        Db.root.updateChildren(paths)
+        // 1. Shown at once, as "Sending...".
+        val local = JSONObject()
+            .put("id", localId)
+            .put("chat_id", chatId)
+            .put("sender_id", me.toLong())
+            .put("receiver_id", otherUid.toLong())
+            .put("type", type)
+            .put("text", text)
+            .put("media_url", media?.toString() ?: JSONObject.NULL)
+            .put("file_name", fileName)
+            .put("file_size", fileSize)
+            .put("post_id", postId.toLongOrNull() ?: JSONObject.NULL)
+            .put("reply_to_id", replyTo?.id?.toLongOrNull() ?: JSONObject.NULL)
+            .put("reply_to_text", replyTo?.text.orEmpty())
+            .put("reply_to_type", replyTo?.type.orEmpty())
+            .put("reply_to_sender_id", replyTo?.senderId?.toLongOrNull() ?: JSONObject.NULL)
+            .put("created_at", created)
+            .put("updated_at", created)
+            .put("pending", true)
+        Json.saveMessage(local)
 
-        if (push) {
-            Db.getUser(me) { user ->
-                PushSender.sendMessage(context, otherUid, user?.name.orEmpty(), preview, chatId)
+        // 2. Sent (or queued).
+        val body = JSONObject().put("to", otherUid.toLong()).put("type", type).put("text", text)
+        if (postId.isNotEmpty()) body.put("post_id", postId.toLong())
+        replyTo?.id?.toLongOrNull()?.let { body.put("reply_to_id", it) }
+        Outbox.send(
+            context, "message", "chat/send.php", body,
+            listOfNotNull(media?.let { "media" to it }), uuid, localId,
+        ) { result ->
+            val saved = result?.json?.optJSONObject("message")
+            if (result != null && result.ok && saved != null) {
+                LocalDb.delete(LocalDb.MESSAGES, "id = ?", arrayOf(localId))
+                Json.saveMessage(saved)
+            } else if (result != null && !result.ok) {
+                LocalDb.delete(LocalDb.MESSAGES, "id = ?", arrayOf(localId))   // refused (e.g. file too big)
             }
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Reading
+    // ---------------------------------------------------------------------------------------
+
+    /** The newest messages of a chat on the phone, oldest first (pending ones included). */
+    fun cachedMessages(chatId: String, limit: Int = 200): List<Message> =
+        LocalDb.list(LocalDb.MESSAGES, "chat_id = ?", arrayOf(chatId), "created_at DESC", limit)
+            .map { Json.message(it) }
+            .reversed()
+
+    /** What chat/messages.php says besides the messages. */
+    class ChatState(
+        val other: User?,
+        val friends: Boolean,
+        val otherReadAt: Long,
+        val typing: Boolean,
+        val time: Long,
+    )
+
+    /**
+     * Asks the server what changed in the chat with [otherUid] since [since] (0 = the newest
+     * 100) and saves it in SQLite. [onDone] gets the state, or null when offline.
+     */
+    fun refresh(otherUid: String, since: Long, onDone: (ChatState?) -> Unit) {
+        Api.get("chat/messages.php", mapOf("with" to otherUid, "since" to since)) { result ->
+            val json = result.json
+            if (!result.ok || json == null) {
+                onDone(null)
+                return@get
+            }
+            rememberServerTime(json.optLong("time"))
+            Json.objects(json.optJSONArray("messages")).forEach { Json.saveMessage(it) }
+            onDone(
+                ChatState(
+                    other = json.optJSONObject("other")?.let { Json.saveUser(it) },
+                    friends = json.optBoolean("friends"),
+                    otherReadAt = json.optLong("other_read_at"),
+                    typing = json.optBoolean("typing"),
+                    time = json.optLong("time"),
+                )
+            )
         }
     }
 
@@ -111,82 +167,58 @@ object ChatRepo {
     // Editing, deleting, reacting
     // ---------------------------------------------------------------------------------------
 
-    /** True for my own messages, not yet deleted, sent less than 5 minutes ago. */
+    /** Show Edit / Delete? My own, sent, not deleted, less than 5 minutes old (server clock). */
     fun canChange(message: Message): Boolean =
-        message.senderId == me && !message.deleted && message.type != MsgType.SYSTEM &&
-                Db.now() - message.timestamp <= EDIT_WINDOW_MS
+        message.senderId == me && !message.deleted && !message.pending && message.type != MsgType.SYSTEM &&
+            now() - message.timestamp <= EDIT_WINDOW_MS
 
-    /** Changes the text of my message (within 5 minutes). Returns false if it's too late. */
-    fun edit(chatId: String, message: Message, newText: String): Boolean {
-        if (!canChange(message) || message.type != MsgType.TEXT) return false
-        Db.messages(chatId).child(message.id).updateChildren(mapOf("text" to newText, "edited" to true))
-        updatePreviewIfLast(chatId, message, newText)
-        return true
+    /** Changes the text of my message. The server checks the 5 minutes; [onDone] gets its error. */
+    fun edit(message: Message, newText: String, onDone: (error: String?) -> Unit) {
+        Api.post("chat/edit.php", JSONObject().put("id", message.id.toLong()).put("text", newText)) { result ->
+            result.json?.optJSONObject("message")?.takeIf { result.ok }?.let { Json.saveMessage(it) }
+            onDone(if (result.ok) null else result.error)
+        }
     }
 
-    /** Deletes my message for everyone (within 5 minutes): the bubble then says "Message deleted". */
-    fun delete(context: Context, chatId: String, message: Message): Boolean {
-        if (!canChange(message)) return false
-        val paths = HashMap<String, Any?>()
-        paths["messages/$chatId/${message.id}/deleted"] = true
-        paths["messages/$chatId/${message.id}/text"] = ""
-        paths["messages/$chatId/${message.id}/mediaId"] = ""
-        if (message.mediaId.isNotEmpty()) paths["media/${message.mediaId}"] = null
-        Db.root.updateChildren(paths)
-        updatePreviewIfLast(chatId, message, context.getString(R.string.preview_deleted))
-        return true
+    /** Deletes my message for everyone ("Message deleted"). A pending one just leaves the queue. */
+    fun delete(message: Message, onDone: (error: String?) -> Unit) {
+        if (isLocal(message.id)) {
+            LocalDb.delete(LocalDb.MESSAGES, "id = ?", arrayOf(message.id))
+            LocalDb.removePending(message.id.removePrefix("local-"))
+            onDone(null)
+            return
+        }
+        Api.post("chat/delete.php", JSONObject().put("id", message.id.toLong())) { result ->
+            result.json?.optJSONObject("message")?.takeIf { result.ok }?.let { Json.saveMessage(it) }
+            onDone(if (result.ok) null else result.error)
+        }
     }
 
-    /** If [message] is the newest in the chat, both rows on Chats show [preview] instead. */
-    private fun updatePreviewIfLast(chatId: String, message: Message, preview: String) {
-        val other = otherUidOf(chatId)
-        Db.userChats(me).child(chatId).child("timestamp")
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if ((snapshot.value as? Number)?.toLong() != message.timestamp) return
-                    Db.root.updateChildren(
-                        mapOf(
-                            "userChats/$me/$chatId/lastMessage" to preview,
-                            "userChats/$other/$chatId/lastMessage" to preview,
-                        )
-                    )
-                }
-
-                override fun onCancelled(error: DatabaseError) {}
-            })
-    }
-
-    /** Puts my reaction on a message (double tap = love), or removes it with null. */
-    fun react(chatId: String, message: Message, reactionKey: String?) {
-        val ref = Db.messages(chatId).child(message.id).child("reactions").child(me)
-        if (reactionKey == null) ref.removeValue() else ref.setValue(reactionKey)
+    /** Puts my reaction on a message (love), or removes it with null. Shown at once. */
+    fun react(context: Context, message: Message, reactionKey: String?) {
+        if (isLocal(message.id)) return
+        LocalDb.get(LocalDb.MESSAGES, "id", message.id)?.let { json ->
+            val reactions = json.optJSONObject("reactions") ?: JSONObject().also { json.put("reactions", it) }
+            if (reactionKey == null) reactions.remove(me) else reactions.put(me, reactionKey)
+            Json.saveMessage(json)
+        }
+        val body = JSONObject().put("id", message.id.toLong()).put("type", reactionKey ?: "")
+        Outbox.send(context, "message_react", "chat/react.php", body)
     }
 
     // ---------------------------------------------------------------------------------------
     // Read receipts and typing
     // ---------------------------------------------------------------------------------------
 
-    /** Opening a chat: my unread count goes to 0 and "Seen" time is updated for the other person. */
-    fun markRead(chatId: String) {
-        Db.chatReads(chatId).child(me).setValue(Db.now())
-        // Only if the row exists, so opening an empty chat doesn't create a half row on Chats.
-        Db.userChats(me).child(chatId).addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) snapshot.ref.child("unread").setValue(0)
-            }
-
-            override fun onCancelled(error: DatabaseError) {}
-        })
+    /** Opening a chat: my unread count goes to 0 and the other person sees "Seen". */
+    fun markRead(otherUid: String) {
+        if (otherUid.isEmpty() || !NetworkMonitor.isOnline) return
+        Api.post("chat/read.php", JSONObject().put("with", otherUid.toLong())) { }
     }
 
-    /** "typing..." for the other person. Removed automatically if my phone disconnects. */
-    fun setTyping(chatId: String, typing: Boolean) {
-        val ref = Db.typing(chatId).child(me)
-        if (typing) {
-            ref.setValue(true)
-            ref.onDisconnect().removeValue()
-        } else {
-            ref.removeValue()
-        }
+    /** "typing..." for the other person (the server forgets it after 6 seconds by itself). */
+    fun setTyping(otherUid: String, typing: Boolean) {
+        if (otherUid.isEmpty() || !NetworkMonitor.isOnline) return
+        Api.post("chat/typing.php", JSONObject().put("with", otherUid.toLong()).put("typing", typing)) { }
     }
 }

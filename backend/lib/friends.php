@@ -7,6 +7,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/api.php';
 require_once __DIR__ . '/users.php';
+require_once __DIR__ . '/push.php';
 
 /** How [$me] is related to [$other]: self, friends, received (they asked me), sent (I asked), none. */
 function friend_status(int $me, int $other): string
@@ -75,6 +76,7 @@ function add_notification(int $to, int $from, string $type, ?int $postId = null,
         'INSERT INTO notifications (user_id, from_id, type, post_id, text, created_at) VALUES (?, ?, ?, ?, ?, ?)',
         [$to, $from, $type, $postId, mb_substr($text, 0, 300), now_ms()]
     );
+    push_alert($to, $from, $type, $text);   // and a push notification to their phone
 }
 
 /** Makes two people friends (both rows) and removes the requests between them. */
