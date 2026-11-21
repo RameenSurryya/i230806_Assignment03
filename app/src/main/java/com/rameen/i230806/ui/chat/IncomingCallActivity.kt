@@ -4,10 +4,11 @@ import android.media.Ringtone
 import android.media.RingtoneManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.addCallback
 import androidx.core.app.NotificationManagerCompat
 import com.rameen.i230806.R
-import com.rameen.i230806.data.Call
 import com.rameen.i230806.data.CallRepo
 import com.rameen.i230806.data.CallStatus
 import com.rameen.i230806.data.CallType
@@ -22,9 +23,9 @@ import com.rameen.i230806.util.Avatars
  * KinnectMessagingService with Extra.CALL_ID, Extra.UID (the caller) and Extra.CALL_TYPE.
  *
  *  - Plays the phone's ringtone while it shows.
- *  - Watches calls/{me}: if the caller cancels or gives up, the screen closes by itself.
- *  - Answer: sets the call to "accepted" and opens the voice or video call screen.
- *  - Decline (or Back): sets it to "declined"; the caller's phone shows "Call declined".
+ *  - Asks calls/status.php every 1.5 s: if the caller cancels or gives up, the screen closes.
+ *  - Answer: opens the voice or video call screen, which answers it on the server.
+ *  - Decline (or Back): calls/decline.php; the caller's phone shows "Call declined".
  */
 class IncomingCallActivity : BaseActivity() {
     override val darkSystemBars = true // white status bar icons on the teal screen
@@ -34,8 +35,16 @@ class IncomingCallActivity : BaseActivity() {
     private lateinit var callerUid: String
     private lateinit var callType: String
 
-    private var call: Call? = null
     private var answered = false
+    private val handler = Handler(Looper.getMainLooper())
+    private val poll = object : Runnable {
+        override fun run() {
+            CallRepo.status(callId) { call ->
+                if (call != null && call.status != CallStatus.RINGING && !answered && !isFinishing) finish()
+            }
+            handler.postDelayed(this, POLL_MS)
+        }
+    }
     private var ringtone: Ringtone? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,18 +75,12 @@ class IncomingCallActivity : BaseActivity() {
         onBackPressedDispatcher.addCallback(this) { decline() }
 
         // Still ringing? Closes the screen when the caller hangs up first.
-        watch(Db.calls(myUid)) { snapshot ->
-            val current = snapshot.getValue(Call::class.java)
-            if (current == null || current.callId != callId || current.status != CallStatus.RINGING) {
-                if (!answered) finish()
-            } else {
-                call = current
-            }
-        }
+        handler.post(poll)
         startRinging()
     }
 
     override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
         ringtone?.stop()
         super.onDestroy()
     }
@@ -91,10 +94,9 @@ class IncomingCallActivity : BaseActivity() {
     }
 
     private fun answer() {
-        val ringing = call ?: return
         answered = true
         ringtone?.stop()
-        CallRepo.accept(ringing)
+        handler.removeCallbacks(poll)
         val screen = if (callType == CallType.VIDEO) VideoCallActivity::class.java else VoiceCallActivity::class.java
         openScreen(screen) {
             putExtra(Extra.UID, callerUid)
@@ -105,10 +107,11 @@ class IncomingCallActivity : BaseActivity() {
     }
 
     private fun decline() {
-        call?.let {
-            CallRepo.decline(it)
-            CallRepo.log(it, CallStatus.DECLINED, it.timestamp, 0)
-        }
+        if (!answered) CallRepo.decline(callId)
         finish()
+    }
+
+    private companion object {
+        const val POLL_MS = 1500L
     }
 }

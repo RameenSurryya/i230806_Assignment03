@@ -17,10 +17,11 @@ import io.agora.rtc2.video.VideoCanvas
  * "channel" (its name is the callId) and Agora's servers connect them.
  *
  * The App ID is in res/values/agora.xml. The project has an App Certificate, so joining needs a
- * token: AgoraToken makes it from assets/agora-certificate.txt (kept out of GitHub).
+ * token. Assignment 3: our server makes it (backend/lib/agora.php) and sends it with the call,
+ * so the certificate never ships inside the app.
  *
  *   val agora = AgoraCall(this, video = true, onRemoteJoined = { uid -> ... }, onRemoteLeft = { ... })
- *   agora.join(channel)          // after the microphone (and camera) permission is granted
+ *   agora.join(channel, token)   // after the microphone (and camera) permission is granted
  *   agora.leave()                // when the call ends
  *
  * Agora calls the event handler on its own thread, so every callback is moved to the main thread.
@@ -54,7 +55,7 @@ class AgoraCall(
     private fun appId(): String = activity.getString(R.string.agora_app_id).trim()
 
     /** Creates the engine and joins [channel] with the microphone (and camera for video). */
-    fun join(channel: String) {
+    fun join(channel: String, token: String?) {
         try {
             val config = RtcEngineConfig().apply {
                 mContext = activity.applicationContext
@@ -76,9 +77,8 @@ class AgoraCall(
                 autoSubscribeAudio = true
                 autoSubscribeVideo = video
             }
-            // Token made from the App Certificate (null if there is none: testing mode).
+            // Token from our server (null if the server has no certificate: testing mode).
             // uid 0: Agora picks one.
-            val token = AgoraToken.build(activity, appId(), channel)
             val result = rtc.joinChannel(token, channel, 0, options)
             if (result != 0) onError()
         } catch (e: Exception) {

@@ -6,4 +6,5 @@ return [
     'db_user' => 'kinnect',
     'db_pass' => 'YOUR_DB_PASSWORD',
     'base_path' => '/kinnect',
+    'agora_app_id' => 'YOUR_AGORA_APP_ID',     // same as app/src/main/res/values/agora.xml
 ];

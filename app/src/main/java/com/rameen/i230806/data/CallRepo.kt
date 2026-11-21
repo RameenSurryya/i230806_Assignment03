@@ -1,93 +1,77 @@
 package com.rameen.i230806.data
 
 import android.content.Context
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.ValueEventListener
+import org.json.JSONObject
 
 /**
- * Ringing, answering and ending calls. The audio and video themselves go through Agora
- * (AgoraCall); Firebase only tells the two phones what is happening:
+ * Ringing, answering and ending calls through our server (Assignment 3: the calls/ PHP files,
+ * table calls). The audio and video themselves go through Agora (AgoraCall).
  *
- *   calls/{calleeUid}       Call: the call ringing / going on for that person right now
- *   callLogs/{uid}/{callId} CallLog: each person's own call history
+ *   start   caller: calls/start.php -> the server saves the call and sends the callee a
+ *           "call" push, so their phone rings even when the app is closed
+ *   status  both phones ask calls/status.php every 1.5 s while their call screen shows
+ *   answer  callee: ringing -> accepted        decline  callee: ringing -> declined
+ *   end     either side: ringing -> missed, accepted -> ended
  *
- * Both phones watch calls/{calleeUid}:
- *   - status "ringing"  -> the callee's Incoming call screen is showing
- *   - status "accepted" -> both phones are in the Agora channel (channel = callId)
- *   - status "declined" -> the caller shows "Call declined" and removes the node
- *   - node removed      -> the call is over (hung up, cancelled or not answered)
+ * The Agora token for the channel comes from the server (start / answer), made with the App
+ * Certificate that stays on the server. The calls table is also the call log (calls/log.php).
  */
 object CallRepo {
 
-    /** A ringing / accepted call older than this was left behind by a crash: not "busy". */
-    private const val STALE_MS = 2 * 60 * 1000L
+    /** A call and the Agora token to join its channel (null when the server has no certificate). */
+    class Joined(val call: Call, val token: String?)
 
-    private val me: String get() = Db.uid ?: ""
+    /** A call from the server's JSON. */
+    fun callOf(j: JSONObject) = Call(
+        callId = Json.str(j, "id"),
+        callerId = j.optLong("caller_id").toString(),
+        calleeId = j.optLong("callee_id").toString(),
+        channel = Json.str(j, "channel"),
+        type = Json.str(j, "type").ifEmpty { CallType.VOICE },
+        status = Json.str(j, "status"),
+        timestamp = j.optLong("created_at"),
+    )
+
+    private fun joinedOf(result: Api.Result): Joined? {
+        val json = result.json ?: return null
+        val call = json.optJSONObject("call") ?: return null
+        return Joined(callOf(call), if (json.isNull("token")) null else Json.str(json, "token").ifEmpty { null })
+    }
 
     /**
-     * Starts ringing [otherUid]: writes the call and sends them a push. [onStarted] gets the
-     * call, or null when they are already in another call.
+     * Starts ringing [otherUid]. [onDone] gets the call and token, or null with the reason:
+     * "busy" when they're already in a call, or the server / network error.
      */
-    fun start(context: Context, otherUid: String, type: String, onStarted: (Call?) -> Unit) {
-        val ref = Db.calls(otherUid)
-        ref.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val current = snapshot.getValue(Call::class.java)
-                val busy = current != null && Db.now() - current.timestamp < STALE_MS &&
-                        (current.status == CallStatus.RINGING || current.status == CallStatus.ACCEPTED)
-                if (busy) {
-                    onStarted(null)
-                    return
-                }
-                val callId = Db.root.child("calls").push().key ?: return
-                val call = Call(
-                    callId = callId,
-                    callerId = me,
-                    calleeId = otherUid,
-                    channel = callId,          // both phones join the Agora channel with this name
-                    type = type,
-                    status = CallStatus.RINGING,
-                    timestamp = Db.now(),
-                )
-                ref.setValue(call)
-                // The ringing push is sent by the server from step 9 (calls/start.php).
-                onStarted(call)
-            }
-
-            override fun onCancelled(error: DatabaseError) = onStarted(null)
-        })
+    fun start(otherUid: String, type: String, onDone: (Joined?, String?) -> Unit) {
+        val body = JSONObject().put("to", otherUid.toLong()).put("type", type)
+        Api.post("calls/start.php", body) { result ->
+            if (result.ok) onDone(joinedOf(result), null)
+            else onDone(null, if (result.status == 409) BUSY else result.error)
+        }
     }
 
-    /** Callee answers: the caller's screen sees "accepted". */
-    fun accept(call: Call) {
-        Db.calls(call.calleeId).child("status").setValue(CallStatus.ACCEPTED)
+    /** Callee answers. [onDone] gets the call and token, or null if it already ended. */
+    fun answer(callId: String, onDone: (Joined?) -> Unit) {
+        Api.post("calls/answer.php", JSONObject().put("id", callId.toLong())) { result ->
+            onDone(if (result.ok) joinedOf(result) else null)
+        }
     }
 
-    /** Callee declines: the caller's screen sees "declined" and cleans up. */
-    fun decline(call: Call) {
-        Db.calls(call.calleeId).child("status").setValue(CallStatus.DECLINED)
+    /** The call's current state, or null when it couldn't be read (offline). */
+    fun status(callId: String, onDone: (Call?) -> Unit) {
+        Api.get("calls/status.php", mapOf("id" to callId)) { result ->
+            onDone(result.json?.optJSONObject("call")?.takeIf { result.ok }?.let { callOf(it) })
+        }
     }
 
-    /** Either side ends (or the caller cancels): removing the node ends it on both phones. */
-    fun end(call: Call) {
-        Db.calls(call.calleeId).removeValue()
+    fun decline(callId: String) {
+        Api.post("calls/decline.php", JSONObject().put("id", callId.toLong())) { }
     }
 
-    /** Adds the call to my own history. */
-    fun log(call: Call, status: String, startedAt: Long, durationSec: Long) {
-        if (me.isEmpty()) return
-        val outgoing = call.callerId == me
-        Db.callLogs(me).child(call.callId).setValue(
-            CallLog(
-                callId = call.callId,
-                otherUid = if (outgoing) call.calleeId else call.callerId,
-                type = call.type,
-                outgoing = outgoing,
-                status = status,
-                startedAt = startedAt,
-                durationSec = durationSec,
-            )
-        )
+    /** Hang up (or cancel ringing). Safe to call twice. */
+    fun end(callId: String) {
+        Api.post("calls/end.php", JSONObject().put("id", callId.toLong())) { }
     }
+
+    const val BUSY = "busy"
 }
